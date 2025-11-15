@@ -3,7 +3,7 @@
 /* ===================================================== */
 
 /* Google Fonts import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'  );
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* Asosiy o'zgaruvchilar (CSS Variables) */
 :root {
@@ -1167,88 +1167,53 @@ body.admin-page {
 .kpi-progress-bar .on-time { background-color: var(--green-color); }
 .kpi-progress-bar .late { background-color: var(--yellow-color); }
 
-#employee-details-view {
-    display: none;
-    animation: fadeIn 0.5s;
+.employee-details-view {
+    margin-top: 30px;
+    display: none; /* Boshida yashirin */
 }
 
-.details-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.calendar-grid {
+.details-calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
-}
-
-.calendar-day-header {
-    text-align: center;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding-bottom: 10px;
-    font-size: 14px;
+    gap: 3px;
+    margin-top: 15px;
 }
 
 .calendar-day {
-    position: relative;
-    width: 100%;
-    padding-top: 75%; /* Kvadrat shaklni saqlash uchun */
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 18px;
-    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 4px;
+    text-align: center;
+    min-height: 45px;
     border: 1px solid var(--border-color);
-}
-
-.calendar-day .day-number {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.calendar-day.disabled {
-    background-color: transparent;
-    border-color: transparent;
-}
-
-/* Status ranglari */
-.calendar-day.on-time {
-    background-color: rgba(40, 167, 69, 0.2);
-    color: var(--green-color);
-    border-color: var(--green-color);
-}
-.calendar-day.late {
-    background-color: rgba(255, 193, 7, 0.2);
-    color: var(--yellow-color);
-    border-color: var(--yellow-color);
-}
-.calendar-day.not-submitted {
-    background-color: rgba(220, 53, 69, 0.15);
-    color: var(--red-color);
-    border-color: var(--red-color);
-}
-.calendar-day.future {
-    background-color: var(--header-bg);
-    color: var(--text-secondary);
-    border-color: var(--border-color);
-}
-
-/* Hover va Kursor */
-.calendar-day[data-report-id]:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 15px currentColor;
+    position: relative;
     cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-/* Tahrirlangan hisobot indikatori */
+.calendar-day:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.calendar-day .day-number { font-weight: 600; font-size: 14px; }
+.calendar-day.on_time { background-color: rgba(40, 167, 69, 0.2); border-color: var(--green-color); }
+.calendar-day.late { background-color: rgba(255, 193, 7, 0.2); border-color: var(--yellow-color); }
+.calendar-day.not_submitted { background-color: rgba(220, 53, 69, 0.15); border-color: var(--red-color); opacity: 0.7; }
+.calendar-day.disabled { background-color: var(--header-bg); opacity: 0.5; cursor: default; }
+.calendar-day .edit-indicator {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    color: var(--cyan-color);
+}
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
 /* ===================================================== */
 /* === KPI JADVALI VA VIZUALIZATSIYASI UCHUN STILLAR === */
 /* ===================================================== */
@@ -1465,7 +1430,11 @@ body.admin-page {
     transition: opacity 0.3s, visibility 0.3s;
     pointer-events: none;
 }
-.calendar-day .kpi-tooltip::after {
+.calendar-day:hover .kpi-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+.kpi-tooltip::after {
     content: '';
     position: absolute;
     top: 100%;
@@ -1474,10 +1443,6 @@ body.admin-page {
     border-width: 5px;
     border-style: solid;
     border-color: var(--bg-color) transparent transparent transparent;
-}
-.calendar-day:hover .kpi-tooltip {
-    visibility: visible;
-    opacity: 1;
 }
 .kpi-tooltip-row {
     display: flex;
@@ -1488,24 +1453,192 @@ body.admin-page {
     color: var(--text-secondary);
 }
 
-/* Future day styling */
-.calendar-day.future {
-    opacity: 0.6;
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
 /* ===================================================== */
-/* === KPI JADVALI OCHILADIGAN QATOR UCHUN STILLAR === */
+/* === KPI JADVALI OCHILADIGAN QATOR UCHUN STILLAR (YANGI VERSIYA) === */
 /* ===================================================== */
 
 /* Asosiy qator (KPI balli bilan) */
 .kpi-main-row {
     transition: background-color 0.2s;
-    cursor: pointer; /* Kalendarga o'tish uchun kursor */
+    cursor: pointer;
 }
 .kpi-main-row:hover {
     background-color: var(--header-bg);
 }
+.kpi-main-row.details-open {
+    background-color: rgba(0, 123, 255, 0.1);
+    border-bottom: none; /* Ochilganda pastki chiziqni olib tashlash */
+}
+
+/* Batafsil ma'lumotlar qatori (ochiladigan) */
+.kpi-details-row.hidden {
+    display: none;
+}
+
+.kpi-details-row td {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ochiladigan blokning ichki tuzilmasi */
+.kpi-details-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Diagramma va kalendar teng kenglikda yonma-yon */
+    gap: 30px;
+    padding: 25px 30px;
+    background-color: rgba(0, 0, 0, 0.2);
+    align-items: start;
+}
+
+.kpi-details-bars {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 15px;
+}
+
+.kpi-details-calendar-container {
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Default widget o'lchamlari va joylashuvi */
+.kpi-widget[data-widget-id="diagramma-widget"] {
+    width: 300px;
+    height: 150px;
+    position: absolute;
+    left: 10px;
+    top: 10px;
+}
+
+.kpi-widget[data-widget-id="kalendar-widget"] {
+    width: 400px;
+    height: 180px;
+    position: absolute;
+    left: 320px;
+    top: 10px;
+}
+
+.calendar-placeholder {
+    color: var(--text-secondary);
+    padding: 8px;
+    text-align: center;
+    width: 100%;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+.calendar-placeholder.error {
+    color: var(--red-color);
+}
+
+/* Mini Kalendar Stillari */
+.mini-calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    gap: 1px;
+}
+
+.mini-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+}
+
+.mini-calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    font-size: 9px;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.mini-calendar-day.disabled { 
+    visibility: hidden;
+}
+
+.mini-calendar-day.on_time { 
+    background-color: var(--green-color);
+    color: white;
+}
+.mini-calendar-day.late { 
+    background-color: var(--yellow-color);
+    color: #333;
+}
+.mini-calendar-day.not_submitted { 
+    background-color: var(--red-color);
+    color: white;
+}
+.mini-calendar-day.future { 
+    background-color: var(--header-bg);
+    opacity: 0.5;
+}
+
+/* Ochish/yopish tugmasi */
+.employee-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.toggle-kpi-details-btn {
+    color: var(--text-secondary);
+    transition: transform 0.3s ease;
+}
+.kpi-main-row.details-open .toggle-kpi-details-btn {
+    transform: rotate(90deg);
+    color: var(--blue-color);
+}
+
+/* KPI progress barlari uchun stil */
+.kpi-bar-wrapper {
+    background-color: var(--header-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 36px;
+    position: relative;
+}
+
+.kpi-bar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    transition: width 0.5s ease;
+}
+
+.kpi-bar.on-time { background-color: var(--green-color); }
+.kpi-bar.late { background-color: var(--blue-color); }
+.kpi-bar.edited { background-color: var(--yellow-color); color: #333; }
 
 /* Batafsil ma'lumotlar qatori (progress barlar bilan) */
 .kpi-details-row.hidden {
@@ -1531,147 +1664,107 @@ body.admin-page {
 }
 
 /* KPI Details Layout */
-.kpi-details-row td {
-    padding: 0 !important;
-    border: none !important;
-    animation: slideDown 0.4s ease-out;
-}
-
 .kpi-details-layout {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 25px;
-    padding: 20px 25px;
+    position: relative;
+    min-height: 200px;
+    padding: 10px 12px;
     background-color: rgba(0, 0, 0, 0.2);
     border-top: 1px solid var(--border-color);
+}
+
+/* Responsive: kichik ekranlarda diagramma va kalendar bir-birining ustida */
+@media (max-width: 768px) {
+    .kpi-details-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px;
+    }
+}
+
+/* Widget stillari */
+.kpi-widget {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 0.3s ease;
+}
+
+.kpi-widget:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
+    cursor: move;
+    user-select: none;
+}
+
+.widget-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.widget-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.widget-resize-handle {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: nwse-resize;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.widget-resize-handle:hover {
+    color: var(--text-primary);
+}
+
+.widget-resize-handle i {
+    width: 12px;
+    height: 12px;
+}
+
+.widget-content {
+    padding: 10px;
+    overflow: auto;
+    height: calc(100% - 40px); /* Header balandligini hisobga olgan holda */
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-details-calendar-container .widget-content {
+    padding: 8px;
 }
 
 .kpi-details-bars {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 15px;
-}
-
-.kpi-details-calendar-container {
-    border-left: 1px solid var(--border-color);
-    padding-left: 25px;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.calendar-placeholder {
-    color: var(--text-secondary);
-    padding: 15px;
-    text-align: center;
-}
-
-.calendar-placeholder.error {
-    color: var(--red-color);
-}
-
-/* Mini Calendar Styles */
-.mini-calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-    gap: 4px;
-}
-
-.mini-calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-}
-
-.mini-calendar-day {
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.mini-calendar-day > span {
-    position: relative;
-    z-index: 1;
-}
-
-.mini-calendar-day.disabled { 
-    visibility: hidden;
-}
-
-.mini-calendar-day.on_time { 
-    background-color: var(--green-color);
-    color: white;
-}
-
-.mini-calendar-day.late { 
-    background-color: var(--yellow-color);
-    color: #333;
-}
-
-.mini-calendar-day.not_submitted { 
-    background-color: var(--red-color);
-    color: white;
-}
-
-.mini-calendar-day.future { 
-    background-color: var(--header-bg);
-    opacity: 0.6;
-    color: var(--text-secondary);
-}
-
-.mini-calendar-day.today {
-    box-shadow: 0 0 0 2px var(--blue-color);
-    z-index: 2;
-}
-
-/* Ochish/yopish tugmasi */
-.toggle-kpi-details-btn {
-    cursor: pointer; /* Bu tugma alohida kursorga ega */
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    padding: 5px;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.toggle-kpi-details-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-}
-
-/* Strelka ikonkasining aylanishi uchun silliq o'tish */
-.toggle-kpi-details-btn i {
-    transition: transform 0.3s ease;
-    width: 20px;
-    height: 20px;
-}
-
-/* "details-open" klassi qo'shilganda strelkani tepaga aylantirish */
-.kpi-main-row.details-open .toggle-kpi-details-btn i {
-    transform: rotate(180deg);
+    justify-content: flex-start;
+    gap: 6px;
+    min-width: 0;
 }
 
 /* KPI progress barlari uchun stil */
 .kpi-bar-wrapper {
-    margin-bottom: 12px;
+    margin-bottom: 0;
     background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    border-radius: 3px;
     overflow: hidden;
-    height: 36px;
+    height: 22px;
     position: relative;
 }
 
@@ -1679,12 +1772,13 @@ body.admin-page {
     height: 100%;
     display: flex;
     align-items: center;
-    padding: 0 15px;
+    padding: 0 6px;
     color: white;
     font-weight: 500;
-    font-size: 13px;
-    min-width: 100px;
+    font-size: 9px;
+    min-width: 40px;
     transition: width 0.5s ease;
+    white-space: nowrap;
 }
 
 .kpi-bar.on-time { background-color: var(--green-color); }

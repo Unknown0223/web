@@ -125,11 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         paginationLimitInput: document.getElementById('pagination-limit'),
         saveGeneralSettingsBtn: document.getElementById('save-general-settings-btn'),
 
-        // KPI Sozlamalari
-        latePenaltyInput: document.getElementById('late-penalty-input'),
-        editPenaltyInput: document.getElementById('edit-penalty-input'),
-        saveKpiSettingsBtn: document.getElementById('save-kpi-settings-btn'),
-
         // Brending
         logoTextInput: document.getElementById('logo-text-input'),
         logoColorPalette: document.getElementById('logo-color-palette'),
@@ -339,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTableSettings();
             renderGeneralSettings();
             renderTelegramSettings();
-            renderKpiSettings();
         }
         if (hasPermission('reports:view_pivot')) {
             initializePivotGrid();
@@ -527,8 +521,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderKpiTable() {
-        const { key, direction } = state.kpi.currentSort;
+        if (!state.kpi.data || state.kpi.data.length === 0) {
+            DOM.kpiTableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Bu oy uchun ma'lumotlar topilmadi.</td></tr>`;
+            return;
+        }
 
+        const { key, direction } = state.kpi.currentSort;
         const sortedData = [...state.kpi.data].sort((a, b) => {
             let valA = a[key];
             let valB = b[key];
@@ -541,12 +539,151 @@ document.addEventListener('DOMContentLoaded', () => {
             return 0;
         });
 
-        if (sortedData.length === 0) {
-            DOM.kpiTableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Bu oy uchun ma'lumotlar topilmadi.</td></tr>`;
-            return;
-        }
-
         DOM.kpiTableBody.innerHTML = sortedData.map(emp => {
+            const locationsText = (emp.locations && emp.locations.length > 0) 
+                ? emp.locations.join(', ') 
+                : 'Biriktirilmagan';
+            
+            const scoreColor = emp.kpiScore > 80 ? 'var(--green-color)' : 
+                             emp.kpiScore > 50 ? 'var(--yellow-color)' : 'var(--red-color)';
+
+            return `
+                <tr class="kpi-main-row" data-user-id="${emp.userId}">
+                    <td>
+                        <div class="employee-cell">
+                            <i data-feather="chevron-right" class="toggle-kpi-details-btn"></i>
+                            <span>${emp.fullname || emp.username}</span>
+                        </div>
+                    </td>
+                    <td>${locationsText}</td>
+                    <td class="kpi-score-cell">
+                        <div class="kpi-score-bar" style="--score-color: ${scoreColor}; --score-width: ${emp.kpiScore.toFixed(1)}%;">
+                            <span>${emp.kpiScore.toFixed(1)}</span>
+                        </div>
+                    </td>
+                    <td>${emp.totalSubmitted}</td>
+                    <td>${emp.onTimeCount}</td>
+                    <td>${emp.lateCount}</td>
+                    <td>${emp.totalEdited}</td>
+                </tr>
+                <tr class="kpi-details-row hidden" data-details-for="${emp.userId}">
+                    <td colspan="7">
+                        <div class="kpi-details-layout">
+                            <div class="kpi-details-bars">
+                                <div class="kpi-bar-wrapper" title="O'z vaqtida: ${emp.onTimePercentage?.toFixed(1) || 0}%">
+                                    <div class="kpi-bar on-time" style="width: ${emp.onTimePercentage || 0}%;">
+                                        <span>${emp.onTimeCount || 0} dona O'z vaqtida</span>
+                                    </div>
+                                </div>
+                                <div class="kpi-bar-wrapper" title="Kechikkan: ${emp.latePercentage?.toFixed(1) || 0}%">
+                                    <div class="kpi-bar late" style="width: ${emp.latePercentage || 0}%;">
+                                        <span>${emp.lateCount || 0} dona Kechikkan</span>
+                                    </div>
+                                </div>
+                                <div class="kpi-bar-wrapper" title="Tahrirlangan hisobotlar soni: ${emp.totalEdited || 0}">
+                                    <div class="kpi-bar edited" style="width: ${(emp.editedPercentage > 100 ? 100 : emp.editedPercentage) || 0}%;">
+                                        <span>${emp.totalEdited || 0} dona Tahrirlangan</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="kpi-details-calendar-container">
+                                <div class="calendar-placeholder">Yuklanmoqda...</div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        document.querySelectorAll('.kpi-table th').forEach(th => {
+            th.classList.remove('sorted', 'asc', 'desc');
+            const sortIcon = th.querySelector('.sort-icon');
+            if (sortIcon) sortIcon.remove();
+
+            if (th.dataset.sort === key) {
+                th.classList.add('sorted', direction);
+                th.innerHTML += `<span class="sort-icon">${direction === 'asc' ? '▲' : '▼'}</span>`;
+            }
+        });
+        
+        feather.replace();
+    }
+
+    async function renderMiniCalendar(userId, container) {
+        if (!container) return;
+        container.innerHTML = '<div class="calendar-placeholder">Kalendar yuklanmoqda...</div>';
+
+        try {
+            const res = await safeFetch(`/api/statistics/employee/${userId}?month=${state.kpi.selectedMonth}`);            
+            if (!res || !res.ok) {
+                throw new Error('Kalendar ma\'lumotlari yuklanmadi');
+            }
+            
+            const dailyData = await res.json();
+            
+            const firstDayOfMonth = new Date(dailyData[0]?.date || new Date()).getUTCDay();
+            const offset = (firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1);
+
+            let calendarHtml = `
+                <div class="mini-calendar-header">
+                    <div>Du</div><div>Se</div><div>Cho</div><div>Pa</div><div>Ju</div><div>Sh</div><div>Ya</div>
+                </div>
+                <div class="mini-calendar-grid">
+            `;
+            
+            // Add empty cells for days before the first day of the month
+            calendarHtml += Array(offset).fill('<div class="mini-calendar-day disabled"></div>').join('');
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Add calendar days
+            if (Array.isArray(dailyData)) {
+                calendarHtml += dailyData.map(day => {
+                    if (!day || !day.date) return '';
+                    
+                    const dayDate = new Date(day.date);
+                    dayDate.setHours(0, 0, 0, 0);
+                    
+                    let statusClass = day.status || '';
+                    if (dayDate > today) {
+                        statusClass = 'future';
+                    }
+                    
+                    const isToday = dayDate.getTime() === today.getTime();
+                    const editIcon = day.isEdited ? `<i data-feather="edit-2" class="edit-indicator"></i>` : '';
+                    
+                    return `<div class="mini-calendar-day ${statusClass} ${isToday ? 'today' : ''}" title="${day.date}" data-report-id="${day.reportId || ''}">
+                        <span>${day.day || ''}</span>
+                        ${editIcon}
+                    </div>`;
+                }).join('');
+            }
+
+            calendarHtml += '</div>';
+            container.innerHTML = calendarHtml;
+            feather.replace();
+            
+        } catch (error) {
+            console.error('Kalendarni yuklashda xatolik:', error);
+            container.innerHTML = `<div class="calendar-placeholder error">Xatolik: ${error.message}</div>`;
+        }
+    }
+        }).join('');
+        
+        document.querySelectorAll('.kpi-table th').forEach(th => {
+            th.classList.remove('sorted', 'asc', 'desc');
+            const sortIcon = th.querySelector('.sort-icon');
+            if (sortIcon) sortIcon.remove();
+
+            if (th.dataset.sort === key) {
+                th.classList.add('sorted', direction);
+                th.innerHTML += `<span class="sort-icon">${direction === 'asc' ? '▲' : '▼'}</span>`;
+            }
+        });
+        
+        feather.replace();
+    }
             const locationsText = (emp.locations && emp.locations.length > 0) 
                 ? emp.locations.join(', ') 
                 : 'Biriktirilmagan';
@@ -575,46 +712,26 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>
             <tr class="kpi-details-row hidden" data-details-for="${emp.userId}">
                 <td colspan="7">
-                    <div class="kpi-details-layout" data-layout-id="kpi-widget-layout">
-                        <div class="kpi-widget kpi-details-bars" data-widget-type="diagramma" data-widget-id="diagramma-widget">
-                            <div class="widget-header">
-                                <span class="widget-title">Diagramma</span>
-                                <div class="widget-controls">
-                                    <button class="widget-resize-handle" title="O'lchamini o'zgartirish">
-                                        <i data-feather="maximize-2"></i>
-                                    </button>
+                    <div class="kpi-details-layout">
+                        <div class="kpi-details-bars">
+                            <div class="kpi-bar-wrapper" title="O'z vaqtida: ${emp.onTimePercentage.toFixed(1)}%">
+                                <div class="kpi-bar on-time" style="width: ${emp.onTimePercentage}%;">
+                                    <span>${emp.onTimeCount} dona O'z vaqtida</span>
                                 </div>
                             </div>
-                            <div class="widget-content">
-                                <div class="kpi-bar-wrapper" title="O'z vaqtida: ${emp.onTimePercentage.toFixed(1)}%">
-                                    <div class="kpi-bar on-time" style="width: ${emp.onTimePercentage}%;">
-                                        <span>${emp.onTimeCount} dona O'z vaqtida</span>
-                                    </div>
+                            <div class="kpi-bar-wrapper" title="Kechikkan: ${emp.latePercentage.toFixed(1)}%">
+                                <div class="kpi-bar late" style="width: ${emp.latePercentage}%;">
+                                    <span>${emp.lateCount} dona Kechikkan</span>
                                 </div>
-                                <div class="kpi-bar-wrapper" title="Kechikkan: ${emp.latePercentage.toFixed(1)}%">
-                                    <div class="kpi-bar late" style="width: ${emp.latePercentage}%;">
-                                        <span>${emp.lateCount} dona Kechikkan</span>
-                                    </div>
-                                </div>
-                                <div class="kpi-bar-wrapper" title="Tahrirlangan hisobotlar soni: ${emp.totalEdited}">
-                                    <div class="kpi-bar edited" style="width: ${emp.editedPercentage > 100 ? 100 : emp.editedPercentage}%;">
-                                        <span>${emp.totalEdited} dona Tahrirlangan</span>
-                                    </div>
+                            </div>
+                            <div class="kpi-bar-wrapper" title="Tahrirlangan hisobotlar soni: ${emp.totalEdited}">
+                                <div class="kpi-bar edited" style="width: ${emp.editedPercentage > 100 ? 100 : emp.editedPercentage}%;">
+                                    <span>${emp.totalEdited} dona Tahrirlangan</span>
                                 </div>
                             </div>
                         </div>
-                        <div class="kpi-widget kpi-details-calendar-container" data-widget-type="kalendar" data-widget-id="kalendar-widget">
-                            <div class="widget-header">
-                                <span class="widget-title">Kalendar</span>
-                                <div class="widget-controls">
-                                    <button class="widget-resize-handle" title="O'lchamini o'zgartirish">
-                                        <i data-feather="maximize-2"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="widget-content">
-                                <div class="calendar-placeholder">Yuklanmoqda...</div>
-                            </div>
+                        <div class="kpi-details-calendar-container">
+                            <div class="calendar-placeholder">Yuklanmoqda...</div>
                         </div>
                     </div>
                 </td>
@@ -634,235 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         feather.replace();
-    }
-
-    // Widget funksiyalari
-    function initializeKpiWidgets(detailsRow) {
-        if (!detailsRow) return;
-        
-        const layout = detailsRow.querySelector('.kpi-details-layout');
-        if (!layout) return;
-        
-        // Saqlangan holatni yuklash
-        loadWidgetLayout(layout);
-        
-        // Widget'larni drag qilish uchun
-        const widgets = layout.querySelectorAll('.kpi-widget');
-        widgets.forEach(widget => {
-            setupWidgetDrag(widget, layout);
-            setupWidgetResize(widget);
-        });
-        
-        feather.replace();
-    }
-    
-    function setupWidgetDrag(widget, layout) {
-        const header = widget.querySelector('.widget-header');
-        if (!header) return;
-        
-        let isDragging = false;
-        let startX, startY, startLeft, startTop;
-        
-        header.style.cursor = 'move';
-        header.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.widget-resize-handle')) return;
-            isDragging = true;
-            widget.style.position = 'absolute';
-            widget.style.zIndex = '1000';
-            
-            const rect = widget.getBoundingClientRect();
-            const layoutRect = layout.getBoundingClientRect();
-            
-            startX = e.clientX;
-            startY = e.clientY;
-            startLeft = rect.left - layoutRect.left;
-            startTop = rect.top - layoutRect.top;
-            
-            widget.style.left = startLeft + 'px';
-            widget.style.top = startTop + 'px';
-            
-            e.preventDefault();
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            
-            const layoutRect = layout.getBoundingClientRect();
-            const newLeft = startLeft + (e.clientX - startX);
-            const newTop = startTop + (e.clientY - startY);
-            
-            // Layout chegaralarida qolish
-            const maxLeft = layoutRect.width - widget.offsetWidth;
-            const maxTop = layoutRect.height - widget.offsetHeight;
-            
-            widget.style.left = Math.max(0, Math.min(newLeft, maxLeft)) + 'px';
-            widget.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
-        });
-        
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                widget.style.zIndex = '1';
-                saveWidgetLayout(layout);
-            }
-        });
-    }
-    
-    function setupWidgetResize(widget) {
-        const resizeHandle = widget.querySelector('.widget-resize-handle');
-        if (!resizeHandle) return;
-        
-        let isResizing = false;
-        let startX, startY, startWidth, startHeight, startLeft, startTop;
-        
-        resizeHandle.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            isResizing = true;
-            
-            const rect = widget.getBoundingClientRect();
-            startX = e.clientX;
-            startY = e.clientY;
-            startWidth = rect.width;
-            startHeight = rect.height;
-            startLeft = rect.left;
-            startTop = rect.top;
-            
-            widget.style.position = 'absolute';
-            widget.style.left = startLeft + 'px';
-            widget.style.top = startTop + 'px';
-            widget.style.width = startWidth + 'px';
-            widget.style.height = startHeight + 'px';
-            widget.style.zIndex = '1000';
-            
-            e.preventDefault();
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            
-            const deltaX = e.clientX - startX;
-            const deltaY = e.clientY - startY;
-            
-            const newWidth = Math.max(150, startWidth + deltaX);
-            const newHeight = Math.max(100, startHeight + deltaY);
-            
-            widget.style.width = newWidth + 'px';
-            widget.style.height = newHeight + 'px';
-        });
-        
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                widget.style.zIndex = '1';
-                saveWidgetLayout(widget.closest('.kpi-details-layout'));
-            }
-        });
-    }
-    
-    function saveWidgetLayout(layout) {
-        if (!layout) return;
-        
-        const widgets = layout.querySelectorAll('.kpi-widget');
-        const layoutData = {};
-        
-        widgets.forEach(widget => {
-            const widgetId = widget.dataset.widgetId;
-            const rect = widget.getBoundingClientRect();
-            const layoutRect = layout.getBoundingClientRect();
-            
-            layoutData[widgetId] = {
-                left: rect.left - layoutRect.left,
-                top: rect.top - layoutRect.top,
-                width: rect.width,
-                height: rect.height
-            };
-        });
-        
-        localStorage.setItem('kpi-widget-layout', JSON.stringify(layoutData));
-    }
-    
-    function loadWidgetLayout(layout) {
-        if (!layout) return;
-        
-        const saved = localStorage.getItem('kpi-widget-layout');
-        if (!saved) return;
-        
-        try {
-            const layoutData = JSON.parse(saved);
-            const widgets = layout.querySelectorAll('.kpi-widget');
-            
-            widgets.forEach(widget => {
-                const widgetId = widget.dataset.widgetId;
-                const data = layoutData[widgetId];
-                
-                if (data) {
-                    widget.style.position = 'absolute';
-                    widget.style.left = data.left + 'px';
-                    widget.style.top = data.top + 'px';
-                    widget.style.width = data.width + 'px';
-                    widget.style.height = data.height + 'px';
-                }
-            });
-        } catch (e) {
-            console.error('Widget layout yuklashda xatolik:', e);
-        }
-    }
-
-    async function renderMiniCalendar(userId, container) {
-        if (!container) return;
-        container.innerHTML = '<div class="calendar-placeholder">Kalendar yuklanmoqda...</div>';
-
-        try {
-            const res = await safeFetch(`/api/statistics/employee/${userId}?month=${state.kpi.selectedMonth}`);            
-            if (!res || !res.ok) {
-                throw new Error('Kalendar ma\'lumotlari yuklanmadi');
-            }
-            
-            const dailyData = await res.json();
-            
-            const firstDayOfMonth = new Date(dailyData[0].date).getUTCDay();
-            const offset = (firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1);
-
-            let calendarHtml = `
-                <div class="mini-calendar-header">
-                    <div>Du</div><div>Se</div><div>Cho</div><div>Pa</div><div>Ju</div><div>Sh</div><div>Ya</div>
-                </div>
-                <div class="mini-calendar-grid">
-            `;
-            
-            // Add empty cells for days before the first day of the month
-            calendarHtml += Array(offset).fill('<div class="mini-calendar-day disabled"></div>').join('');
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // Add calendar days
-            calendarHtml += dailyData.map(day => {
-                const dayDate = new Date(day.date);
-                dayDate.setHours(0, 0, 0, 0);
-                
-                let statusClass = day.status;
-                if (dayDate > today) {
-                    statusClass = 'future';
-                }
-                
-                const isToday = dayDate.getTime() === today.getTime();
-                const editIcon = day.isEdited ? `<i class="edit-indicator" data-feather="edit-2" style="width: 12px; height: 12px; position: absolute; top: 5px; right: 5px;"></i>` : '';
-                
-                return `<div class="mini-calendar-day ${statusClass} ${isToday ? 'today' : ''}" title="${day.date}" data-report-id="${day.reportId || ''}">
-                    <span>${day.day}</span>
-                    ${editIcon}
-                </div>`;
-            }).join('');
-
-            calendarHtml += '</div>';
-            container.innerHTML = calendarHtml;
-            feather.replace();
-            
-        } catch (error) {
-            console.error('Kalendarni yuklashda xatolik:', error);
-            container.innerHTML = `<div class="calendar-placeholder error">Xatolik: ${error.message}</div>`;
-        }
     }
 
     function handleKpiSort(e) {
@@ -1389,12 +1277,6 @@ async function loadDataForPivot(startDate = '', endDate = '') {
         if (DOM.adminChatIdInput) DOM.adminChatIdInput.value = state.settings.telegram_admin_chat_id || '';
     }
 
-    function renderKpiSettings() {
-        const kpiSettings = state.settings.kpi_settings || { latePenalty: 0.5, editPenalty: 0.3 };
-        if (DOM.latePenaltyInput) DOM.latePenaltyInput.value = kpiSettings.latePenalty || 0.5;
-        if (DOM.editPenaltyInput) DOM.editPenaltyInput.value = kpiSettings.editPenalty || 0.3;
-    }
-
     function setupAuditLogFilters() {
         if (!DOM.auditUserFilter || !DOM.auditDateFilter || !DOM.auditActionFilter) return;
         DOM.auditUserFilter.innerHTML = '<option value="">Barcha foydalanuvchilar</option>';
@@ -1680,7 +1562,6 @@ async function loadDataForPivot(startDate = '', endDate = '') {
             addSafeListener(DOM.settingsPage, 'click', handleTableSettingsActions);
             addSafeListener(DOM.saveTelegramBtn, 'click', saveTelegramSettings);
             addSafeListener(DOM.saveGeneralSettingsBtn, 'click', saveGeneralSettings);
-            addSafeListener(DOM.saveKpiSettingsBtn, 'click', saveKpiSettings);
             document.querySelectorAll('.accordion-header').forEach(header => addSafeListener(header, 'click', toggleAccordion));
         }
         
@@ -1707,55 +1588,20 @@ async function loadDataForPivot(startDate = '', endDate = '') {
                 const detailsRow = DOM.kpiTableBody.querySelector(`.kpi-details-row[data-details-for="${userId}"]`);
                 if (!detailsRow) return;
 
-                // Agar bu qator allaqachon ochiq bo'lsa, uni yopish
-                const isCurrentlyOpen = row.classList.contains('details-open');
-                
-                // Barcha boshqa ochiq qatorlarni yopish
-                DOM.kpiTableBody.querySelectorAll('.kpi-main-row.details-open').forEach(openRow => {
-                    if (openRow !== row) {
-                        const openUserId = openRow.dataset.userId;
-                        const openDetailsRow = DOM.kpiTableBody.querySelector(`.kpi-details-row[data-details-for="${openUserId}"]`);
-                        if (openDetailsRow) {
-                            openRow.classList.remove('details-open');
-                            openDetailsRow.classList.add('hidden');
-                            const openIcon = openRow.querySelector('.toggle-kpi-details-btn');
-                            if (openIcon) {
-                                openIcon.setAttribute('data-feather', 'chevron-right');
-                            }
-                        }
-                    }
-                });
+                const isOpen = row.classList.toggle('details-open');
+                detailsRow.classList.toggle('hidden');
 
-                // Agar qator yopiq bo'lsa, uni ochish; ochiq bo'lsa, yopish
-                if (!isCurrentlyOpen) {
-                    row.classList.add('details-open');
-                    detailsRow.classList.remove('hidden');
-                    
-                    const icon = row.querySelector('.toggle-kpi-details-btn');
-                    if (icon) {
-                        icon.setAttribute('data-feather', 'chevron-down');
-                        feather.replace();
-                    }
+                const icon = row.querySelector('.toggle-kpi-details-btn');
+                if (icon) {
+                    icon.setAttribute('data-feather', isOpen ? 'chevron-down' : 'chevron-right');
+                    feather.replace();
+                }
 
-                    // Kalendarni yuklash (agar hali yuklanmagan bo'lsa)
-                    if (!detailsRow.dataset.calendarLoaded) {
-                        const container = detailsRow.querySelector('.kpi-details-calendar-container .widget-content');
-                        if (container) {
-                            await renderMiniCalendar(userId, container);
-                            detailsRow.dataset.calendarLoaded = 'true';
-                        }
-                    }
-                    
-                    // Widget funksiyalarini ishga tushirish
-                    initializeKpiWidgets(detailsRow);
-                } else {
-                    // Qatorni yopish
-                    row.classList.remove('details-open');
-                    detailsRow.classList.add('hidden');
-                    const icon = row.querySelector('.toggle-kpi-details-btn');
-                    if (icon) {
-                        icon.setAttribute('data-feather', 'chevron-right');
-                        feather.replace();
+                if (isOpen && !detailsRow.dataset.calendarLoaded) {
+                    const container = detailsRow.querySelector('.kpi-details-calendar-container');
+                    if (container) {
+                        await renderMiniCalendar(userId, container);
+                        detailsRow.dataset.calendarLoaded = 'true';
                     }
                 }
             });
@@ -2302,62 +2148,6 @@ async function loadDataForPivot(startDate = '', endDate = '') {
             if (!res || !res.ok) throw new Error((await res.json()).message);
             showToast("Umumiy sozlamalar saqlandi!");
         } catch (error) { showToast(error.message, true); }
-    }
-
-    async function saveKpiSettings() {
-        const latePenalty = parseFloat(DOM.latePenaltyInput.value);
-        const editPenalty = parseFloat(DOM.editPenaltyInput.value);
-
-        // Validatsiya
-        if (isNaN(latePenalty) || latePenalty < 0 || latePenalty > 1) {
-            showToast("Kechikkan hisobot uchun jarima 0 dan 1 gacha bo'lishi kerak.", true);
-            return;
-        }
-        if (isNaN(editPenalty) || editPenalty < 0 || editPenalty > 1) {
-            showToast("Tahrirlangan hisobot uchun jarima 0 dan 1 gacha bo'lishi kerak.", true);
-            return;
-        }
-
-        const kpiSettings = {
-            latePenalty: latePenalty,
-            editPenalty: editPenalty
-        };
-
-        try {
-            const res = await safeFetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'kpi_settings', value: kpiSettings })
-            });
-            
-            if (!res || !res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || 'Sozlamalarni saqlashda xatolik');
-            }
-
-            const result = await res.json();
-            state.settings.kpi_settings = kpiSettings;
-            showToast("KPI sozlamalari muvaffaqiyatli saqlandi!");
-            
-            // Agar KPI sahifasi ochiq bo'lsa, ma'lumotlarni qayta yuklash
-            const currentPage = window.location.hash.substring(1) || 'dashboard';
-            if (currentPage === 'employee-statistics' || DOM.employeeStatisticsPage?.classList.contains('active')) {
-                // Agar oy tanlanmagan bo'lsa, joriy oyni o'rnatamiz
-                if (!state.kpi.selectedMonth) {
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                    state.kpi.selectedMonth = `${year}-${month}`;
-                    if (DOM.kpiMonthPicker) {
-                        DOM.kpiMonthPicker.value = state.kpi.selectedMonth;
-                    }
-                }
-                // Ma'lumotlarni qayta yuklash
-                await fetchAndRenderKpiData();
-            }
-        } catch (error) {
-            showToast(error.message || "KPI sozlamalarini saqlashda xatolik yuz berdi.", true);
-        }
     }
 
     function toggleAccordion(e) {

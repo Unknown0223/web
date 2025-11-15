@@ -68,6 +68,9 @@ router.get('/', isAuthenticated, hasPermission('settings:view'), async (req, res
         if (!settings.telegram_bot_username) {
             settings.telegram_bot_username = '';
         }
+        if (!settings.kpi_settings) {
+            settings.kpi_settings = { latePenalty: 0.5, editPenalty: 0.3 };
+        }
         
         res.json(settings);
     } catch (error) {

@@ -71,11 +71,12 @@ router.get('/employees', isAuthenticated, hasPermission('dashboard:view'), async
             });
 
             const totalSubmitted = employeeReports.length;
-            const totalEdited = employeeReports.reduce((sum, r) => sum + r.edit_count, 0);
+            const totalEditedCount = employeeReports.reduce((sum, r) => sum + r.edit_count, 0);
+            const editedReportsCount = employeeReports.filter(r => r.edit_count > 0).length;
             
             const onTimePercentage = totalSubmitted > 0 ? (onTimeCount / totalSubmitted) * 100 : 0;
             const latePercentage = totalSubmitted > 0 ? (lateCount / totalSubmitted) * 100 : 0;
-            const editedPercentage = totalSubmitted > 0 ? (totalEdited / totalSubmitted) * 100 : 0;
+            const editedPercentage = totalSubmitted > 0 ? (editedReportsCount / totalSubmitted) * 100 : 0;
 
             const kpiScore = Math.max(0, onTimePercentage - (latePercentage * kpiSettings.latePenalty) - (editedPercentage * kpiSettings.editPenalty));
 
@@ -87,7 +88,7 @@ router.get('/employees', isAuthenticated, hasPermission('dashboard:view'), async
                 totalSubmitted,
                 onTimeCount,
                 lateCount,
-                totalEdited,
+                totalEdited: totalEditedCount,
                 onTimePercentage,
                 latePercentage,
                 editedPercentage,
