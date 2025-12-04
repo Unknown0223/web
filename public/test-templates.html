@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Templates Panel</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body style="padding: 40px; background: #1a1c23; color: white;">
+    <h1>🧪 Test: Templates Panel</h1>
+    <p>Bu sahifada templates panel doimo ko'rinishi kerak</p>
+    
+    <hr style="margin: 30px 0; border-color: #333;">
+    
+    <!-- Сохраненные шаблоны - doimo ochiq -->
+    <div id="templates-panel" class="card templates-panel" style="margin-bottom: 20px;">
+        <div class="templates-panel-header">
+            <h3 class="card-title">Сохраненные шаблоны</h3>
+        </div>
+        <div id="templates-tag-list" class="templates-tag-list">
+            <!-- Test content -->
+            <div class="template-tag" data-id="1">
+                <span class="tag-name">Test Template 1</span>
+            </div>
+            <div class="template-tag" data-id="2">
+                <span class="tag-name">Test Template 2</span>
+            </div>
+            <div class="template-tag" data-id="3">
+                <span class="tag-name">Test Template 3</span>
+            </div>
+        </div>
+    </div>
+    
+    <hr style="margin: 30px 0; border-color: #333;">
+    
+    <h2>Empty State Test:</h2>
+    <div id="templates-panel-empty" class="card templates-panel" style="margin-bottom: 20px;">
+        <div class="templates-panel-header">
+            <h3 class="card-title">Сохраненные шаблоны (Empty)</h3>
+        </div>
+        <div id="templates-tag-list-empty" class="templates-tag-list">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; color: var(--text-secondary);">
+                <p style="margin: 0; font-size: 14px;">Сохраненных шаблонов пока нет</p>
+                <small style="margin-top: 5px; opacity: 0.7;">Создайте первый шаблон, настроив таблицу и нажав кнопку "Save"</small>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        console.log('✅ Test page loaded');
+        console.log('Panel element:', document.getElementById('templates-panel'));
+        console.log('Panel display:', window.getComputedStyle(document.getElementById('templates-panel')).display);
+    </script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+const express = require('express');
+const { db } = require('../db.js');
+const { isAuthenticated, hasPermission } = require('../middleware/auth.js');
+
+const router = express.Router();
+
+// GET /api/dashboard/stats - Dashboard uchun barcha statistikani olish
+router.get('/stats', isAuthenticated, hasPermission('dashboard:view'), async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ message: "Sana parametri yuborilishi shart." });
+        }
+
+        // 1. Asosiy sozlamalar va foydalanuvchilar sonini olish
+        const [settingsRow, usersCountResult] = await Promise.all([
+            db('settings').where({ key: 'app_settings' }).first(),
+            db('users').count('* as count').first()
+        ]);
+
+        const allLocations = settingsRow ? (JSON.parse(settingsRow.value).locations || []) : [];
+        const totalUsers = usersCountResult.count;
+
+        if (allLocations.length === 0) {
+            return res.json({
+                generalStats: { totalUsers, totalLocations: 0, dailyTotalReports: 0 },
+                dailyStatus: { submittedCount: 0, statusData: [] },
+                weeklyDynamics: []
+            });
+        }
+        
+        // 2. Tanlangan sana uchun topshirilgan hisobotlarni olish (QO'SHIMCHA MA'LUMOTLAR BILAN)
+        const submittedReports = await db('reports as r')
+            .leftJoin('users as u_creator', 'r.created_by', 'u_creator.id')
+            .where('r.report_date', date)
+            .select(
+                'r.id',
+                'r.location',
+                'r.late_comment',
+                'u_creator.username as creator_username',
+                // Tahrirlar sonini hisoblash uchun subquery
+                db.raw(`(
+                    SELECT COUNT(h.id) 
+                    FROM report_history h 
+                    WHERE h.report_id = r.id
+                ) as edit_count`),
+                // Oxirgi tahrirlovchi username'ini olish uchun subquery
+                db.raw(`(
+                    SELECT u.username 
+                    FROM report_history rh 
+                    JOIN users u ON rh.changed_by = u.id 
+                    WHERE rh.report_id = r.id 
+                    ORDER BY rh.changed_at DESC 
+                    LIMIT 1
+                ) as last_edited_by`),
+                // Oxirgi tahrir vaqtini olish uchun subquery
+                db.raw(`(
+                    SELECT rh.changed_at 
+                    FROM report_history rh 
+                    WHERE rh.report_id = r.id 
+                    ORDER BY rh.changed_at DESC 
+                    LIMIT 1
+                ) as last_edited_at`)
+            );
+        
+        const submittedLocations = new Set(submittedReports.map(r => r.location));
+
+        const statusData = allLocations.map(location => {
+            const reportForLocation = submittedReports.find(r => r.location === location);
+            const isSubmitted = !!reportForLocation;
+            
+            let editInfo = null;
+            if (isSubmitted && reportForLocation.edit_count > 0) {
+                editInfo = {
+                    count: reportForLocation.edit_count,
+                    last_by: reportForLocation.last_edited_by,
+                    last_at: reportForLocation.last_edited_at,
+                };
+            }
+
+            return {
+                name: location,
+                submitted: isSubmitted,
+                is_edited: isSubmitted && reportForLocation.edit_count > 0,
+                edit_info: editInfo,
+                late_comment: reportForLocation?.late_comment || null,
+                creator: reportForLocation?.creator_username || null
+            };
+        });
+
+        // 3. Oxirgi 7 kunlik hisobotlar dinamikasini olish
+        const sevenDaysAgo = new Date(date);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const startDate = sevenDaysAgo.toISOString().split('T')[0];
+
+        const weeklyDynamics = await db('reports')
+            .select('report_date')
+            .count('* as count')
+            .where('report_date', '>=', startDate)
+            .andWhere('report_date', '<=', date)
+            .groupBy('report_date')
+            .orderBy('report_date', 'asc');
+            
+        const weeklyDataMap = weeklyDynamics.reduce((acc, item) => {
+            acc[item.report_date] = item.count;
+            return acc;
+        }, {});
+
+        const finalWeeklyDynamics = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startDate);
+            d.setDate(d.getDate() + i);
+            const formattedDate = d.toISOString().split('T')[0];
+            finalWeeklyDynamics.push({
+                date: formattedDate,
+                count: weeklyDataMap[formattedDate] || 0
+            });
+        }
+
+        // 4. Qo'shimcha statistikalar
+        const totalReportsCount = await db('reports').count('* as count').first();
+        const editedReportsCount = await db('reports')
+            .whereExists(function() {
+                this.select('*').from('report_history').whereRaw('report_history.report_id = reports.id');
+            })
+            .count('* as count')
+            .first();
+        
+        const lateReportsCount = await db('reports')
+            .where('report_date', date)
+            .whereNotNull('late_comment')
+            .count('* as count')
+            .first();
+            
+        const onTimeReportsCount = submittedReports.length - (lateReportsCount?.count || 0);
+        
+        const activeUsersCount = await db('users')
+            .where('status', 'active')
+            .count('* as count')
+            .first();
+            
+        const pendingUsersCount = await db('pending_registrations')
+            .count('* as count')
+            .first();
+
+        res.json({
+            generalStats: {
+                totalUsers: totalUsers,
+                totalLocations: allLocations.length,
+                dailyTotalReports: submittedReports.length
+            },
+            dailyStatus: {
+                submittedCount: submittedLocations.size,
+                statusData: statusData
+            },
+            weeklyDynamics: finalWeeklyDynamics,
+            additionalStats: {
+                totalReports: totalReportsCount.count,
+                editedReports: editedReportsCount.count,
+                lateReports: lateReportsCount.count,
+                onTimeReports: onTimeReportsCount,
+                activeUsers: activeUsersCount.count,
+                pendingUsers: pendingUsersCount.count,
+                submittedPercent: allLocations.length > 0 ? ((submittedLocations.size / allLocations.length) * 100).toFixed(1) : 0,
+                notSubmittedCount: allLocations.length - submittedLocations.size
+            }
+        });
+
+    } catch (error) {
+        console.error("/api/dashboard/stats GET xatoligi:", error);
+        res.status(500).json({ message: "Dashboard statistikasini yuklashda xatolik" });
+    }
+});
+
+// GET /api/dashboard/chart-data - Turli xil grafiklar uchun ma'lumotlar
+router.get('/chart-data', isAuthenticated, hasPermission('dashboard:view'), async (req, res) => {
+    try {
+        const { type, date } = req.query;
+        
+        if (!type || !date) {
+            return res.status(400).json({ message: "Type va date parametrlari zarur." });
+        }
+        
+        let chartData = {};
+        
+        switch(type) {
+                        case 'by_brand':
+                            // Brendlar bo'yicha statistika
+                            // 1. Barcha brendlarni va ularning rangini olish
+                            const brands = await db('brands').select('id', 'name', 'color');
+                            // 2. Brend-filial bog'lanishini olish
+                            const brandLocations = await db('brand_locations');
+                            // 3. Sana bo'yicha barcha hisobotlarni olish
+                            const reports = await db('reports').where('report_date', date);
+
+                            // 4. Har bir brend uchun hisobotlar sonini hisoblash
+                            const brandStats = brands.map(brand => {
+                                // Ushbu brendga tegishli filiallar
+                                const locations = brandLocations.filter(bl => bl.brand_id === brand.id).map(bl => bl.location_name);
+                                // Ushbu brendga tegishli hisobotlar soni (shu brendga biriktirilgan filiallar bo'yicha)
+                                const count = reports.filter(r => locations.includes(r.location)).length;
+                                return {
+                                    brand: brand.name,
+                                    count,
+                                    color: brand.color || '#4facfe'
+                                };
+                            });
+                            chartData = brandStats;
+                            break;
+            case 'weekly':
+                // Haftalik dinamika (7 kun)
+                const sevenDaysAgo = new Date(date);
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+                const startDate = sevenDaysAgo.toISOString().split('T')[0];
+                
+                const weeklyDynamics = await db('reports')
+                    .select('report_date')
+                    .count('* as count')
+                    .where('report_date', '>=', startDate)
+                    .andWhere('report_date', '<=', date)
+                    .groupBy('report_date')
+                    .orderBy('report_date', 'asc');
+                
+                const weeklyDataMap = weeklyDynamics.reduce((acc, item) => {
+                    acc[item.report_date] = item.count;
+                    return acc;
+                }, {});
+                
+                const finalWeeklyData = [];
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(startDate);
+                    d.setDate(d.getDate() + i);
+                    const formattedDate = d.toISOString().split('T')[0];
+                    finalWeeklyData.push({
+                        date: formattedDate,
+                        count: weeklyDataMap[formattedDate] || 0
+                    });
+                }
+                chartData = finalWeeklyData;
+                break;
+                
+            case 'monthly':
+                // Oylik dinamika (30 kun)
+                const thirtyDaysAgo = new Date(date);
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+                const monthStartDate = thirtyDaysAgo.toISOString().split('T')[0];
+                
+                const monthlyDynamics = await db('reports')
+                    .select('report_date')
+                    .count('* as count')
+                    .where('report_date', '>=', monthStartDate)
+                    .andWhere('report_date', '<=', date)
+                    .groupBy('report_date')
+                    .orderBy('report_date', 'asc');
+                
+                const monthlyDataMap = monthlyDynamics.reduce((acc, item) => {
+                    acc[item.report_date] = item.count;
+                    return acc;
+                }, {});
+                
+                const finalMonthlyData = [];
+                for (let i = 0; i < 30; i++) {
+                    const d = new Date(monthStartDate);
+                    d.setDate(d.getDate() + i);
+                    const formattedDate = d.toISOString().split('T')[0];
+                    finalMonthlyData.push({
+                        date: formattedDate,
+                        count: monthlyDataMap[formattedDate] || 0
+                    });
+                }
+                chartData = finalMonthlyData;
+                break;
+                
+            case 'by_location':
+                // Filiallar bo'yicha statistika
+                const settingsRow = await db('settings').where({ key: 'app_settings' }).first();
+                const allLocations = settingsRow ? (JSON.parse(settingsRow.value).locations || []) : [];
+                
+                const locationStats = await db('reports')
+                    .select('location')
+                    .count('* as count')
+                    .where('report_date', date)
+                    .groupBy('location');
+                
+                const locationMap = locationStats.reduce((acc, item) => {
+                    acc[item.location] = item.count;
+                    return acc;
+                }, {});
+                
+                chartData = allLocations.map(loc => ({
+                    location: loc,
+                    count: locationMap[loc] || 0
+                }));
+                break;
+                
+            case 'by_user':
+                // Foydalanuvchilar bo'yicha statistika (bugungi kun)
+                const userStats = await db('reports as r')
+                    .join('users as u', 'r.created_by', 'u.id')
+                    .select('u.username', 'u.fullname')
+                    .count('r.id as count')
+                    .where('r.report_date', date)
+                    .groupBy('u.id', 'u.username', 'u.fullname')
+                    .orderBy('count', 'desc')
+                    .limit(10);
+                
+                chartData = userStats.map(item => ({
+                    user: item.fullname || item.username,
+                    count: item.count
+                }));
+                break;
+                
+            case 'late_vs_ontime':
+                // Kechikkan vs O'z vaqtida
+                const lateCount = await db('reports')
+                    .where('report_date', date)
+                    .whereNotNull('late_comment')
+                    .count('* as count')
+                    .first();
+                
+                const totalCount = await db('reports')
+                    .where('report_date', date)
+                    .count('* as count')
+                    .first();
+                
+                chartData = {
+                    late: lateCount.count || 0,
+                    onTime: (totalCount.count || 0) - (lateCount.count || 0)
+                };
+                break;
+                
+            case 'edited_reports':
+                // Tahrirlangan hisobotlar dinamikasi (7 kun)
+                const editedSevenDaysAgo = new Date(date);
+                editedSevenDaysAgo.setDate(editedSevenDaysAgo.getDate() - 6);
+                const editedStartDate = editedSevenDaysAgo.toISOString().split('T')[0];
+                
+                const editedDynamics = await db('reports as r')
+                    .select('r.report_date')
+                    .count('r.id as count')
+                    .whereExists(function() {
+                        this.select('*').from('report_history').whereRaw('report_history.report_id = r.id');
+                    })
+                    .where('r.report_date', '>=', editedStartDate)
+                    .andWhere('r.report_date', '<=', date)
+                    .groupBy('r.report_date')
+                    .orderBy('r.report_date', 'asc');
+                
+                const editedDataMap = editedDynamics.reduce((acc, item) => {
+                    acc[item.report_date] = item.count;
+                    return acc;
+                }, {});
+                
+                const finalEditedData = [];
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(editedStartDate);
+                    d.setDate(d.getDate() + i);
+                    const formattedDate = d.toISOString().split('T')[0];
+                    finalEditedData.push({
+                        date: formattedDate,
+                        count: editedDataMap[formattedDate] || 0
+                    });
+                }
+                chartData = finalEditedData;
+                break;
+                
+            default:
+                return res.status(400).json({ message: "Noto'g'ri grafik turi." });
+        }
+        
+        res.json({ type, data: chartData });
+        
+    } catch (error) {
+        console.error("/api/dashboard/chart-data GET xatoligi:", error);
+        res.status(500).json({ message: "Grafik ma'lumotlarini yuklashda xatolik" });
+    }
+});
+
+// Eski endpointni o'chiramiz, chunki u endi ishlatilmaydi.
+router.get('/status', isAuthenticated, hasPermission('dashboard:view'), async (req, res) => {
+    res.status(404).json({ message: "Bu endpoint eskirgan. Iltimos, /api/dashboard/stats'dan foydalaning." });
+});
+
+module.exports = router;
