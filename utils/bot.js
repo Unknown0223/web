@@ -288,11 +288,36 @@ async function handleSecurityRequest(payload) {
     }
 
     async function sendMarkdownV2Message(chatId, text, options = {}) {
-        if (!bot || !botIsInitialized) return null;
+        console.log(`📨 [TELEGRAM] sendMarkdownV2Message chaqirildi. Chat ID: ${chatId}, Bot initialized: ${botIsInitialized}, Bot exists: ${!!bot}`);
+        
+        if (!bot || !botIsInitialized) {
+            console.warn(`❌ [TELEGRAM] Bot ishga tushirilmagan, MarkdownV2 xabar yuborib bo'lmaydi. Bot: ${!!bot}, Initialized: ${botIsInitialized}`);
+            return null;
+        }
+        
         try {
-            return await bot.sendMessage(chatId, text, { parse_mode: 'MarkdownV2', ...options });
+            console.log(`📤 [TELEGRAM] MarkdownV2 xabar yuborilmoqda... Chat ID: ${chatId}, Text length: ${text?.length || 0}`);
+            const result = await bot.sendMessage(chatId, text, { parse_mode: 'MarkdownV2', ...options });
+            console.log(`✅ [TELEGRAM] MarkdownV2 xabar muvaffaqiyatli yuborildi. Chat ID: ${chatId}, Message ID: ${result?.message_id}`);
+            return result;
         } catch (error) {
-            console.error(`MarkdownV2 xabar yuborishda xatolik (chat_id: ${chatId}):`, error.response?.body || error.message);
+            const body = error.response?.body;
+            console.error(`❌ [TELEGRAM] MarkdownV2 xabar yuborishda xatolik (chat_id: ${chatId}):`, {
+                error_code: body?.error_code,
+                description: body?.description,
+                message: error.message,
+                chatId: chatId
+            });
+            
+            if (body?.error_code === 403) {
+                console.warn(`⚠️ [TELEGRAM] MarkdownV2 xabar yuborish imkonsiz (chat_id: ${chatId}). Bot foydalanuvchi tomonidan bloklangan.`);
+            } else if (body?.error_code === 400) {
+                console.error(`❌ [TELEGRAM] MarkdownV2 Bad Request (400). Chat ID: ${chatId}, Description: ${body?.description}`);
+                if (body?.description?.includes("chat not found")) {
+                    console.error(`❌ [TELEGRAM] MarkdownV2: Chat topilmadi! Chat ID noto'g'ri yoki bot chat'da yo'q.`);
+                }
+            }
+            
             return null;
         }
     }
@@ -305,29 +330,51 @@ async function handleSecurityRequest(payload) {
             break;
 
         case 'magic_link_request':
+            console.log(`🔗 [TELEGRAM] Magic link so'rovi. Chat ID: ${chat_id}, User ID: ${user_id}`);
             const magicLink = new URL(path.join('api/verify-session/', token), NODE_SERVER_URL).href;
             text = `Salom, *${escapeMarkdownV2(username)}*\\! \n\n${escapeMarkdownV2("Yangi qurilmadan kirishni tasdiqlash uchun quyidagi tugmani bosing. Bu havola 5 daqiqa amal qiladi.")}`;
             keyboard = { inline_keyboard: [[{ text: "✅ Yangi Qurilmada Kirish", url: magicLink }]] };
-            await sendMarkdownV2Message(chat_id, text, { reply_markup: keyboard });
+            const magicLinkResult = await sendMarkdownV2Message(chat_id, text, { reply_markup: keyboard });
+            if (magicLinkResult) {
+                console.log(`✅ [TELEGRAM] Magic link yuborildi. Chat ID: ${chat_id}, Message ID: ${magicLinkResult.message_id}`);
+            } else {
+                console.error(`❌ [TELEGRAM] Magic link yuborilmadi. Chat ID: ${chat_id}`);
+            }
             break;
 
         case 'security_alert':
+            console.log(`⚠️ [TELEGRAM] Security alert. Admin Chat ID: ${admin_chat_id}, User ID: ${user_id}`);
             text = `⚠️ *${escapeMarkdownV2("Xavfsizlik Ogohlantirishi!")}* \n\n*${escapeMarkdownV2("Foydalanuvchi:")}* ${escapeMarkdownV2(username)} \\(ID: ${user_id}\\)\n*${escapeMarkdownV2("Holat:")}* ${escapeMarkdownV2("Akkauntga kirish uchun maxfiy so'z 2 marta xato kiritildi. Jarayon bloklandi.")}\n\n${escapeMarkdownV2("Nima qilamiz?")}`;
             keyboard = { inline_keyboard: [[{ text: "✅ Yana Urinish Berish", callback_data: `retry_${user_id}` }, { text: "❌ Jarayonni Bloklash", callback_data: `block_${user_id}` }]] };
-            await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
+            const securityAlertResult = await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
+            if (securityAlertResult) {
+                console.log(`✅ [TELEGRAM] Security alert yuborildi. Admin Chat ID: ${admin_chat_id}, Message ID: ${securityAlertResult.message_id}`);
+            } else {
+                console.error(`❌ [TELEGRAM] Security alert yuborilmadi. Admin Chat ID: ${admin_chat_id}`);
+            }
             break;
 
         case 'account_lock_alert':
+            console.log(`🔒 [TELEGRAM] Account lock alert. Admin Chat ID: ${admin_chat_id}, User ID: ${user_id}`);
             text = `⚠️ *${escapeMarkdownV2("Xavfsizlik Ogohlantirishi!")}* \n\n*${escapeMarkdownV2("Foydalanuvchi:")}* ${escapeMarkdownV2(username)} \\(ID: ${user_id}\\)\n*${escapeMarkdownV2("Holat:")}* ${escapeMarkdownV2("Parol kiritish limitidan oshib ketgani uchun akkaunt bloklandi.")}\n\n${escapeMarkdownV2("Foydalanuvchiga qayta kirishga ruxsat berilsinmi?")}`;
             keyboard = { inline_keyboard: [[{ text: "✅ Ruxsat Berish", callback_data: `unblock_${user_id}` }, { text: "❌ Rad Etish", callback_data: `keep_blocked_${user_id}` }]] };
-            await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
+            const accountLockResult = await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
+            if (accountLockResult) {
+                console.log(`✅ [TELEGRAM] Account lock alert yuborildi. Admin Chat ID: ${admin_chat_id}, Message ID: ${accountLockResult.message_id}`);
+            } else {
+                console.error(`❌ [TELEGRAM] Account lock alert yuborilmadi. Admin Chat ID: ${admin_chat_id}`);
+            }
             break;
             
         case 'new_user_request':
             console.log(`🔔 [TELEGRAM] Yangi foydalanuvchi so'rovi (bot sozlanmagan). User ID: ${user_id}, Admin Chat ID: ${admin_chat_id}`);
             text = `🔔 *${escapeMarkdownV2("Yangi Foydalanuvchi So'rovi (Bot sozlanmagan)!")}* \n\n${escapeMarkdownV2("Tizimda yangi foydalanuvchi ro'yxatdan o'tdi, lekin bot sozlanmaganligi sababli obuna bo'la olmadi. Iltimos, admin panel orqali so'rovni tasdiqlang yoki rad eting.")} \n\n👤 *${escapeMarkdownV2("To'liq ism:")}* ${escapeMarkdownV2(fullname)}\n🔑 *${escapeMarkdownV2("Login:")}* \`${escapeMarkdownV2(username)}\``;
-            await sendMarkdownV2Message(admin_chat_id, text);
-            console.log(`✅ [TELEGRAM] Yangi foydalanuvchi so'rovi admin'ga yuborildi. User ID: ${user_id}`);
+            const newUserRequestResult = await sendMarkdownV2Message(admin_chat_id, text);
+            if (newUserRequestResult) {
+                console.log(`✅ [TELEGRAM] Yangi foydalanuvchi so'rovi admin'ga yuborildi. User ID: ${user_id}, Message ID: ${newUserRequestResult.message_id}`);
+            } else {
+                console.error(`❌ [TELEGRAM] Yangi foydalanuvchi so'rovi yuborilmadi. User ID: ${user_id}, Admin Chat ID: ${admin_chat_id}`);
+            }
             break;
 
         case 'new_user_approval':
@@ -338,8 +385,12 @@ async function handleSecurityRequest(payload) {
                     [{ text: "✅ Tasdiqlash", callback_data: `approve_${user_id}` }, { text: "❌ Rad Etish", callback_data: `reject_${user_id}` }]
                 ]
             };
-            await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
-            console.log(`✅ [TELEGRAM] Tasdiqlash so'rovi admin'ga yuborildi. User ID: ${user_id}`);
+            const newUserApprovalResult = await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
+            if (newUserApprovalResult) {
+                console.log(`✅ [TELEGRAM] Tasdiqlash so'rovi admin'ga yuborildi. User ID: ${user_id}, Message ID: ${newUserApprovalResult.message_id}`);
+            } else {
+                console.error(`❌ [TELEGRAM] Tasdiqlash so'rovi yuborilmadi. User ID: ${user_id}, Admin Chat ID: ${admin_chat_id}`);
+            }
             break;
 
         case 'user_approved_credentials':
