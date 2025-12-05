@@ -122,8 +122,14 @@ router.post('/', isAuthenticated, hasPermission('roles:manage'), async (req, res
         // Check if role already exists
         const existing = await db('roles').where('role_name', role_name).first();
         if (existing) {
+            console.log(`❌ [ROLES] Rol yaratishda xatolik: "${role_name}" allaqachon mavjud`);
             return res.status(400).json({ message: 'Bu rol allaqachon mavjud' });
         }
+        
+        const adminId = req.session.user.id;
+        const username = req.session.user?.username || 'admin';
+        
+        console.log(`📝 [ROLES] Yangi rol yaratilmoqda. Admin: ${username} (ID: ${adminId}), Rol: ${role_name}, Requires Brands: ${requires_brands}, Requires Locations: ${requires_locations}`);
         
         // Create new role
         await db('roles').insert({ 
@@ -132,18 +138,24 @@ router.post('/', isAuthenticated, hasPermission('roles:manage'), async (req, res
             requires_locations: Boolean(requires_locations)
         });
         
+        console.log(`✅ [ROLES] Rol muvaffaqiyatli yaratildi: ${role_name}`);
+        
         // Log to audit
-        const adminId = req.session.user.id;
-        const username = req.session.user?.username || 'admin';
         await db('audit_logs').insert({
             user_id: adminId,
             action: 'create_role',
             target_type: 'role',
             target_id: role_name,
-            details: JSON.stringify({ role_name, requires_brands, requires_locations }),
+            details: JSON.stringify({ 
+                role_name, 
+                requires_brands: Boolean(requires_brands), 
+                requires_locations: Boolean(requires_locations) 
+            }),
             ip_address: req.session.ip_address,
             user_agent: req.session.user_agent
         });
+        
+        console.log(`📋 [ROLES] Audit log yozildi. Action: create_role, Role: ${role_name}, Admin: ${username} (ID: ${adminId})`);
         
         res.json({ message: 'Yangi rol muvaffaqiyatli yaratildi', role_name });
     } catch (error) {
