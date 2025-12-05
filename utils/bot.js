@@ -477,6 +477,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
         console.log("✅ Telegram bot (polling rejimi) muvaffaqiyatli ishga tushdi.");
     } else {
         console.log("✅ Telegram bot (webhook rejimi) uchun tayyor.");
+        console.log("📝 [BOT] Event handler'lar o'rnatilmoqda...");
     }
 
     bot.on('polling_error', (error) => {
@@ -491,9 +492,12 @@ const initializeBot = async (botToken, options = { polling: true }) => {
     bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
         const chatId = msg.chat.id;
         const code = match[1];
+        
+        console.log(`🤖 [BOT] /start komandasi qabul qilindi. Chat ID: ${chatId}, Code: ${code || 'yo\'q'}`);
 
         if (code && code.startsWith('subscribe_')) {
             const newUserId = code.split('_')[1];
+            console.log(`🔗 [BOT] Subscribe so'rovi. User ID: ${newUserId}, Chat ID: ${chatId}`);
             
             try {
                 const existingUserWithTg = await db('users').where({ telegram_chat_id: chatId }).first();
@@ -531,6 +535,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     status: 'pending_approval'
                 });
 
+                console.log(`✅ [BOT] Foydalanuvchi botga ulandi. User ID: ${newUserId}, Status: pending_approval`);
                 await safeSendMessage(chatId, `✅ Rahmat! Siz botga muvaffaqiyatli obuna bo'ldingiz. \n\nSo'rovingiz ko'rib chiqish uchun adminga yuborildi. Tasdiqlanishini kuting.`);
 
                 await sendToTelegram({

@@ -88,14 +88,21 @@ app.post('/telegram-webhook/:token', async (req, res) => {
         const botToken = tokenSetting ? tokenSetting.value : null;
 
         if (bot && botToken && secretToken === botToken) {
+            // Debug: webhook so'rovi kelganini log qilish
+            if (req.body && req.body.message) {
+                console.log(`📨 [WEBHOOK] Xabar qabul qilindi. Chat ID: ${req.body.message.chat?.id}, Text: ${req.body.message.text?.substring(0, 50)}`);
+            } else if (req.body && req.body.callback_query) {
+                console.log(`📨 [WEBHOOK] Callback query qabul qilindi. Data: ${req.body.callback_query.data}`);
+            }
+            
             bot.processUpdate(req.body);
             res.sendStatus(200);
         } else {
-            console.warn(`⚠️ Webhook so'rovi rad etildi. Bot: ${!!bot}, Token match: ${botToken === secretToken}`);
+            console.warn(`⚠️ [WEBHOOK] So'rov rad etildi. Bot: ${!!bot}, Token match: ${botToken === secretToken}, Secret: ${secretToken?.substring(0, 10)}...`);
             res.sendStatus(403);
         }
     } catch (error) {
-        console.error('Webhook endpoint xatoligi:', error);
+        console.error('❌ [WEBHOOK] Endpoint xatoligi:', error);
         res.sendStatus(500);
     }
 });
