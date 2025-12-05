@@ -783,6 +783,15 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             const { state, userId } = adminState;
             if (state === 'awaiting_role') {
                 const role = data;
+                
+                // Faqat admin, manager va operator rollarini qabul qilish
+                const allowedRoles = ['admin', 'manager', 'operator'];
+                if (!allowedRoles.includes(role)) {
+                    await bot.answerCallbackQuery(query.id, { text: "Noto'g'ri rol tanlandi!", show_alert: true });
+                    return;
+                }
+                
+                console.log(`✅ [BOT] Rol tanlandi: ${role}, User ID: ${userId}`);
                 userStates[adminChatId].role = role;
                 userStates[adminChatId].state = 'awaiting_locations';
                 userStates[adminChatId].locations = [];
@@ -792,13 +801,57 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 
                 if (allLocations.length === 0) {
                     const { userId, role } = userStates[adminChatId];
+                    
+                    // Admin yoki Manager uchun brendlar tanlash kerak
+                    if (role === 'admin' || role === 'manager') {
+                        userStates[adminChatId].state = 'awaiting_brands';
+                        userStates[adminChatId].locations = [];
+                        userStates[adminChatId].brands = [];
+                        
+                        // Barcha brendlarni olish
+                        const brandsResponse = await fetch(new URL('api/brands', NODE_SERVER_URL).href);
+                        const allBrands = brandsResponse.ok ? await brandsResponse.json() : [];
+                        
+                        if (allBrands.length === 0) {
+                            await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Tizimda brendlar mavjud emas. Avval brendlar yarating.`, {
+                                chat_id: adminChatId,
+                                message_id: message.message_id,
+                                parse_mode: 'HTML',
+                                reply_markup: {}
+                            });
+                            await bot.answerCallbackQuery(query.id);
+                            return;
+                        }
+                        
+                        const brandButtons = allBrands.map(brand => ([{ 
+                            text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                            callback_data: `brand_${brand.id}` 
+                        }]));
+                        const keyboard = {
+                            inline_keyboard: [
+                                ...brandButtons,
+                                [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }]
+                            ]
+                        };
+                        const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nFiliallar mavjud emas.\n\nEndi brend(lar)ni tanlang:`;
+                        await bot.editMessageText(newText, {
+                            chat_id: adminChatId,
+                            message_id: message.message_id,
+                            parse_mode: 'HTML',
+                            reply_markup: keyboard
+                        });
+                        await bot.answerCallbackQuery(query.id);
+                        return;
+                    }
+                    
+                    // Operator uchun to'g'ridan-to'g'ri tasdiqlash
                     delete userStates[adminChatId];
 
                     try {
                         const response = await fetch(new URL('api/telegram/finalize-approval', NODE_SERVER_URL).href, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ user_id: userId, role, locations: [] })
+                            body: JSON.stringify({ user_id: userId, role, locations: [], brands: [] })
                         });
                         const result = await response.json();
                         if (!response.ok) throw new Error(result.message);
@@ -842,13 +895,56 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             if (state === 'awaiting_locations') {
                 if (data === 'finish_locations') {
                     const { userId, role, locations } = userStates[adminChatId];
+                    
+                    // Admin yoki Manager uchun brendlar tanlash kerak
+                    if (role === 'admin' || role === 'manager') {
+                        userStates[adminChatId].state = 'awaiting_brands';
+                        userStates[adminChatId].brands = [];
+                        
+                        // Barcha brendlarni olish
+                        const brandsResponse = await fetch(new URL('api/brands', NODE_SERVER_URL).href);
+                        const allBrands = brandsResponse.ok ? await brandsResponse.json() : [];
+                        
+                        if (allBrands.length === 0) {
+                            await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Tizimda brendlar mavjud emas. Avval brendlar yarating.`, {
+                                chat_id: adminChatId,
+                                message_id: message.message_id,
+                                parse_mode: 'HTML',
+                                reply_markup: {}
+                            });
+                            await bot.answerCallbackQuery(query.id);
+                            return;
+                        }
+                        
+                        const brandButtons = allBrands.map(brand => ([{ 
+                            text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                            callback_data: `brand_${brand.id}` 
+                        }]));
+                        const keyboard = {
+                            inline_keyboard: [
+                                ...brandButtons,
+                                [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }]
+                            ]
+                        };
+                        const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> ${locations.length > 0 ? locations.map(l => `<code>${escapeHtml(l)}</code>`).join(', ') : 'yo\'q'}\n\nEndi brend(lar)ni tanlang:`;
+                        await bot.editMessageText(newText, {
+                            chat_id: adminChatId,
+                            message_id: message.message_id,
+                            parse_mode: 'HTML',
+                            reply_markup: keyboard
+                        });
+                        await bot.answerCallbackQuery(query.id);
+                        return;
+                    }
+                    
+                    // Operator uchun to'g'ridan-to'g'ri tasdiqlash
                     delete userStates[adminChatId];
 
                     try {
                         const response = await fetch(new URL('api/telegram/finalize-approval', NODE_SERVER_URL).href, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ user_id: userId, role, locations })
+                            body: JSON.stringify({ user_id: userId, role, locations, brands: [] })
                         });
                         const result = await response.json();
                         if (!response.ok) throw new Error(result.message);
@@ -900,6 +996,72 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     return;
                 }
             }
+            if (state === 'awaiting_brands') {
+                if (data === 'finish_brands') {
+                    const { userId, role, locations, brands } = userStates[adminChatId];
+                    delete userStates[adminChatId];
+
+                    try {
+                        const response = await fetch(new URL('api/telegram/finalize-approval', NODE_SERVER_URL).href, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: userId, role, locations, brands })
+                        });
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.message);
+
+                        await bot.editMessageText(originalText + `\n\n✅ <b>Foydalanuvchi tasdiqlandi va unga kirish ma'lumotlari yuborildi.</b>`, {
+                            chat_id: adminChatId,
+                            message_id: message.message_id,
+                            parse_mode: 'HTML',
+                            reply_markup: {}
+                        });
+                    } catch (error) {
+                        await db('users').where({ id: userId }).update({ status: 'pending_approval' });
+                        await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> ${escapeHtml(error.message)}`, {
+                            chat_id: adminChatId,
+                            message_id: message.message_id,
+                            parse_mode: 'HTML',
+                            reply_markup: {}
+                        });
+                    }
+                    await bot.answerCallbackQuery(query.id);
+                    return;
+                }
+                
+                const parts = data.split('_');
+                if (parts[0] === 'brand') {
+                    const brandId = parseInt(parts[1], 10);
+                    const selectedBrands = userStates[adminChatId].brands;
+                    const index = selectedBrands.indexOf(brandId);
+                    if (index > -1) {
+                        selectedBrands.splice(index, 1);
+                    } else {
+                        selectedBrands.push(brandId);
+                    }
+
+                    // Barcha brendlarni olish
+                    const brandsResponse = await fetch(new URL('api/brands', NODE_SERVER_URL).href);
+                    const allBrands = brandsResponse.ok ? await brandsResponse.json() : [];
+                    
+                    const brandButtons = allBrands.map(brand => ([{ 
+                        text: `${selectedBrands.includes(brand.id) ? '✔️ ' : ''}${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                        callback_data: `brand_${brand.id}` 
+                    }]));
+                    const keyboard = {
+                        inline_keyboard: [
+                            ...brandButtons,
+                            [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }]
+                        ]
+                    };
+                    await bot.editMessageReplyMarkup(keyboard, {
+                        chat_id: adminChatId,
+                        message_id: message.message_id
+                    });
+                    await bot.answerCallbackQuery(query.id);
+                    return;
+                }
+            }
         }
 
         const parts = data.split('_');
@@ -929,7 +1091,8 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 userStates[adminChatId] = { state: 'awaiting_role', userId: userId };
                 const keyboard = {
                     inline_keyboard: [
-                        [{ text: "Operator", callback_data: 'operator' }, { text: "Menejer", callback_data: 'manager' }]
+                        [{ text: "Admin", callback_data: 'admin' }, { text: "Menejer", callback_data: 'manager' }],
+                        [{ text: "Operator", callback_data: 'operator' }]
                     ]
                 };
                 await bot.editMessageText(originalText + "\n\nFoydalanuvchi uchun rol tanlang:", {

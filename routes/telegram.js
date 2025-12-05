@@ -43,9 +43,25 @@ router.post('/register-chat', async (req, res) => {
 // === FOYDALANUVCHINI TASDIQLASHNI YAKUNLASH (YANGILANGAN MANTIQ) ===
 // ===================================================================
 router.post('/finalize-approval', async (req, res) => {
-    const { user_id, role, locations } = req.body;
+    const { user_id, role, locations = [], brands = [] } = req.body;
     if (!user_id || !role) {
         return res.status(400).json({ message: "Foydalanuvchi ID si va rol yuborilishi shart." });
+    }
+
+    // Faqat admin, manager va operator rollarini qabul qilish
+    const allowedRoles = ['admin', 'manager', 'operator'];
+    if (!allowedRoles.includes(role)) {
+        return res.status(400).json({ message: "Faqat Admin, Menejer yoki Operator rollari tanlanishi mumkin." });
+    }
+
+    // Validatsiya
+    if ((role === 'operator' || role === 'manager') && locations.length === 0) {
+        return res.status(400).json({ message: "Operator yoki Menejer uchun kamida bitta filial tanlanishi shart." });
+    }
+    
+    // Admin yoki Manager uchun brend belgilash majburiy
+    if ((role === 'admin' || role === 'manager') && brands.length === 0) {
+        return res.status(400).json({ message: "Admin yoki Manager uchun kamida bitta brend tanlanishi shart." });
     }
 
     try {
@@ -77,6 +93,16 @@ router.post('/finalize-approval', async (req, res) => {
             if (locations && locations.length > 0) {
                 const locationsToInsert = locations.map(loc => ({ user_id: user_id, location_name: loc }));
                 await trx('user_locations').insert(locationsToInsert);
+            }
+            
+            // Manager va Admin uchun brendlarni saqlash
+            await trx('user_brands').where({ user_id: user_id }).del();
+            if ((role === 'manager' || role === 'admin') && brands && brands.length > 0) {
+                const brandRecords = brands.map(brandId => ({
+                    user_id: user_id,
+                    brand_id: brandId
+                }));
+                await trx('user_brands').insert(brandRecords);
             }
         });
 

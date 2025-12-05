@@ -313,7 +313,13 @@ router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (
         return res.status(400).json({ message: "Rol tanlanishi shart." });
     }
     
-    // Super admin yaratish faqat super admin tomonidan mumkin
+    // Faqat admin, manager va operator rollarini qabul qilish
+    const allowedRoles = ['admin', 'manager', 'operator'];
+    if (!allowedRoles.includes(role)) {
+        return res.status(400).json({ message: "Faqat Admin, Menejer yoki Operator rollari tanlanishi mumkin." });
+    }
+    
+    // Super admin yaratish faqat super admin tomonidan mumkin (agar super_admin tanlansa)
     if (role === 'super_admin' && currentUserRole !== 'super_admin') {
         return res.status(403).json({ message: "Super admin yaratish faqat super admin tomonidan mumkin." });
     }
@@ -355,9 +361,9 @@ router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (
                 await trx('user_locations').insert(locationsToInsert);
             }
             
-            // Manager uchun brendlarni saqlash
+            // Manager va Admin uchun brendlarni saqlash
             await trx('user_brands').where({ user_id: userId }).del();
-            if (role === 'manager' && brands && brands.length > 0) {
+            if ((role === 'manager' || role === 'admin') && brands && brands.length > 0) {
                 const brandRecords = brands.map(brandId => ({
                     user_id: userId,
                     brand_id: brandId

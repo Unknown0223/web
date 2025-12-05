@@ -692,9 +692,18 @@ export function openApprovalModal(userId, username) {
     DOM.approvalForm.reset();
     DOM.approvalUserIdInput.value = userId;
     DOM.approvalUsernameSpan.textContent = username;
+    // Faqat admin, manager va operator rollarini ko'rsatish
+    const allowedRoles = ['admin', 'manager', 'operator'];
     DOM.approvalRoleSelect.innerHTML = state.roles
-        .filter(r => r.role_name !== 'super_admin' && r.role_name !== 'admin') // Super admin va admin yaratish mumkin emas
-        .map(r => `<option value="${r.role_name}">${r.role_name}</option>`).join('');
+        .filter(r => allowedRoles.includes(r.role_name))
+        .map(r => {
+            const roleNames = {
+                'admin': 'Admin',
+                'manager': 'Menejer',
+                'operator': 'Operator'
+            };
+            return `<option value="${r.role_name}">${roleNames[r.role_name] || r.role_name}</option>`;
+        }).join('');
     toggleLocationVisibilityForApprovalForm();
     DOM.approvalModal.classList.remove('hidden');
 }
@@ -709,8 +718,8 @@ export async function submitUserApproval(e) {
         brands: []
     };
     
-    // Manager uchun brendlarni qo'shish
-    if (data.role === 'manager') {
+    // Manager va Admin uchun brendlarni qo'shish
+    if (data.role === 'manager' || data.role === 'admin') {
         data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
             .map(cb => parseInt(cb.value));
     }
