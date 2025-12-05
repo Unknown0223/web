@@ -554,13 +554,14 @@ const initializeBot = async (botToken, options = { polling: true }) => {
     });
 
     bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
-        const chatId = msg.chat.id;
-        const code = match[1];
-        
-        console.log(`🤖 [BOT] /start komandasi qabul qilindi. Chat ID: ${chatId}, Code: ${code || 'yo\'q'}`);
-        console.log(`🤖 [BOT] /start handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
+        try {
+            const chatId = msg.chat.id;
+            const code = match[1];
+            
+            console.log(`🤖 [BOT] /start komandasi qabul qilindi. Chat ID: ${chatId}, Code: ${code || 'yo\'q'}`);
+            console.log(`🤖 [BOT] /start handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
-        if (code && code.startsWith('subscribe_')) {
+            if (code && code.startsWith('subscribe_')) {
             const newUserId = code.split('_')[1];
             console.log(`🔗 [BOT] Subscribe so'rovi. User ID: ${newUserId}, Chat ID: ${chatId}`);
             
@@ -649,15 +650,24 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             } else {
                 await safeSendMessage(chatId, `Salom! Bu hisobot tizimining rasmiy boti.`);
             }
+        } catch (error) {
+            console.error(`❌ [BOT] /start handler'da xatolik:`, error);
+            console.error(`❌ [BOT] Error stack:`, error.stack);
+            try {
+                await safeSendMessage(msg.chat.id, `❌ Tizimda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`);
+            } catch (sendError) {
+                console.error(`❌ [BOT] Xatolik xabarini yuborishda muammo:`, sendError);
+            }
         }
     });
 
     bot.on('message', async (msg) => {
-        const chatId = msg.chat.id;
-        const text = msg.text;
-        
-        console.log(`💬 [BOT] Xabar qabul qilindi. Chat ID: ${chatId}, Text: ${text?.substring(0, 50) || 'yo\'q'}`);
-        console.log(`💬 [BOT] message event handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
+        try {
+            const chatId = msg.chat.id;
+            const text = msg.text;
+            
+            console.log(`💬 [BOT] Xabar qabul qilindi. Chat ID: ${chatId}, Text: ${text?.substring(0, 50) || 'yo\'q'}`);
+            console.log(`💬 [BOT] message event handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
         // Admin chat ID'ni avtomatik saqlash (super admin yoki admin uchun)
         try {
@@ -721,6 +731,17 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             } catch (error) {
                 console.error("Node.js serveriga maxfiy so'zni tekshirish uchun ulanishda xatolik:", error);
                 await safeSendMessage(chatId, "Tizimda vaqtinchalik xatolik.");
+            }
+        }
+        } catch (error) {
+            console.error(`❌ [BOT] message event handler'da xatolik:`, error);
+            console.error(`❌ [BOT] Error stack:`, error.stack);
+            try {
+                if (msg && msg.chat && msg.chat.id) {
+                    await safeSendMessage(msg.chat.id, `❌ Tizimda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`);
+                }
+            } catch (sendError) {
+                console.error(`❌ [BOT] Xatolik xabarini yuborishda muammo:`, sendError);
             }
         }
     });

@@ -40,44 +40,14 @@ if (!process.env.APP_BASE_URL) {
 // Middlewares - Avatar uchun katta hajmli JSON qabul qilish (10MB gacha)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Sessiyani sozlash
-const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
-
-// Production yoki development rejimini aniqlash
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-// Railway.com yoki boshqa cloud platformalar uchun HTTPS tekshiruvi
-const isSecure = isProduction || 
-                 process.env.RAILWAY_PUBLIC_DOMAIN || 
-                 process.env.APP_BASE_URL?.startsWith('https://') ||
-                 process.env.HTTPS === 'true';
-
-app.use(session({
-    store: new SQLiteStore({ db: 'database.db', dir: './' }),
-    secret: process.env.SESSION_SECRET || 'a-very-strong-and-long-secret-key-for-session',
-    resave: false,
-    saveUninitialized: false,
-    name: 'sessionId', // Default 'connect.sid' o'rniga
-    cookie: { 
-        secure: isSecure, // Production'da HTTPS uchun true
-        maxAge: 1000 * 60 * 60 * 24, // 1 kun
-        sameSite: isSecure ? 'none' : 'lax', // HTTPS uchun cross-site cookie
-        httpOnly: true, // XSS hujumlaridan himoya qilish
-        // Domain ni o'rnatmaymiz - bu cookie'ni barcha subdomain'larda ishlashiga imkon beradi
-    },
-    proxy: true, // Railway.com kabi reverse proxy orqali ishlaganda
-    rolling: true // Har bir request'da cookie'ni yangilash
-}));
-
-// Yordamchi funksiyalar va DB ni import qilish
+// Yordamchi funksiyalar va DB ni import qilish (webhook uchun kerak)
 const { db, initializeDB } = require('./db.js');
 const { isAuthenticated, hasPermission } = require('./middleware/auth.js');
 const { initializeBot, getBot } = require('./utils/bot.js');
 const axios = require('axios');
 
-// --- WEBHOOK UCHUN ENDPOINT ---
+// --- WEBHOOK UCHUN ENDPOINT (MIDDLEWARE'DAN OLDIN) ---
 app.post('/telegram-webhook/:token', async (req, res) => {
     try {
         console.log(`📥 [WEBHOOK] So'rov qabul qilindi. Method: ${req.method}, Path: ${req.path}, Token: ${req.params.token?.substring(0, 10)}...`);
@@ -119,6 +89,38 @@ app.post('/telegram-webhook/:token', async (req, res) => {
         res.sendStatus(500);
     }
 });
+
+// Static files va session middleware (webhook'dan keyin)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Sessiyani sozlash
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
+
+// Production yoki development rejimini aniqlash
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+// Railway.com yoki boshqa cloud platformalar uchun HTTPS tekshiruvi
+const isSecure = isProduction || 
+                 process.env.RAILWAY_PUBLIC_DOMAIN || 
+                 process.env.APP_BASE_URL?.startsWith('https://') ||
+                 process.env.HTTPS === 'true';
+
+app.use(session({
+    store: new SQLiteStore({ db: 'database.db', dir: './' }),
+    secret: process.env.SESSION_SECRET || 'a-very-strong-and-long-secret-key-for-session',
+    resave: false,
+    saveUninitialized: false,
+    name: 'sessionId', // Default 'connect.sid' o'rniga
+    cookie: { 
+        secure: isSecure, // Production'da HTTPS uchun true
+        maxAge: 1000 * 60 * 60 * 24, // 1 kun
+        sameSite: isSecure ? 'none' : 'lax', // HTTPS uchun cross-site cookie
+        httpOnly: true, // XSS hujumlaridan himoya qilish
+        // Domain ni o'rnatmaymiz - bu cookie'ni barcha subdomain'larda ishlashiga imkon beradi
+    },
+    proxy: true, // Railway.com kabi reverse proxy orqali ishlaganda
+    rolling: true // Har bir request'da cookie'ni yangilash
+}));
 
 // Markaziy routerni ulash
 app.use('/api', require('./routes'));
