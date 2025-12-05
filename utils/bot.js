@@ -784,8 +784,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             if (state === 'awaiting_role') {
                 const role = data;
                 
-                // Faqat admin, manager va operator rollarini qabul qilish
-                const allowedRoles = ['admin', 'manager', 'operator'];
+                // Super admin'dan tashqari barcha rollarni qabul qilish
+                const superAdminRole = await db('roles').where({ role_name: 'super_admin' }).first();
+                const allRoles = await db('roles').select('role_name').whereNot('role_name', 'super_admin');
+                const allowedRoles = allRoles.map(r => r.role_name);
+                
                 if (!allowedRoles.includes(role)) {
                     await bot.answerCallbackQuery(query.id, { text: "Noto'g'ri rol tanlandi!", show_alert: true });
                     return;
@@ -1089,12 +1092,41 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 }
 
                 userStates[adminChatId] = { state: 'awaiting_role', userId: userId };
-                const keyboard = {
-                    inline_keyboard: [
-                        [{ text: "Admin", callback_data: 'admin' }, { text: "Menejer", callback_data: 'manager' }],
-                        [{ text: "Operator", callback_data: 'operator' }]
-                    ]
+                
+                // Bazadan barcha rollarni olish (super_admin'dan tashqari)
+                const allRoles = await db('roles')
+                    .select('role_name')
+                    .whereNot('role_name', 'super_admin')
+                    .orderBy('role_name');
+                
+                // Rol nomlarini o'zbek tiliga tarjima qilish
+                const roleNames = {
+                    'admin': 'Admin',
+                    'manager': 'Menejer',
+                    'operator': 'Operator'
                 };
+                
+                // Keyboard yaratish (har bir qatorda 2 ta tugma)
+                const roleButtons = [];
+                for (let i = 0; i < allRoles.length; i += 2) {
+                    const row = [];
+                    row.push({
+                        text: roleNames[allRoles[i].role_name] || allRoles[i].role_name.charAt(0).toUpperCase() + allRoles[i].role_name.slice(1),
+                        callback_data: allRoles[i].role_name
+                    });
+                    if (i + 1 < allRoles.length) {
+                        row.push({
+                            text: roleNames[allRoles[i + 1].role_name] || allRoles[i + 1].role_name.charAt(0).toUpperCase() + allRoles[i + 1].role_name.slice(1),
+                            callback_data: allRoles[i + 1].role_name
+                        });
+                    }
+                    roleButtons.push(row);
+                }
+                
+                const keyboard = {
+                    inline_keyboard: roleButtons
+                };
+                
                 await bot.editMessageText(originalText + "\n\nFoydalanuvchi uchun rol tanlang:", {
                     chat_id: adminChatId,
                     message_id: message.message_id,

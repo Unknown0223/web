@@ -313,15 +313,15 @@ router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (
         return res.status(400).json({ message: "Rol tanlanishi shart." });
     }
     
-    // Faqat admin, manager va operator rollarini qabul qilish
-    const allowedRoles = ['admin', 'manager', 'operator'];
-    if (!allowedRoles.includes(role)) {
-        return res.status(400).json({ message: "Faqat Admin, Menejer yoki Operator rollari tanlanishi mumkin." });
-    }
-    
-    // Super admin yaratish faqat super admin tomonidan mumkin (agar super_admin tanlansa)
+    // Super admin yaratish faqat super admin tomonidan mumkin
     if (role === 'super_admin' && currentUserRole !== 'super_admin') {
         return res.status(403).json({ message: "Super admin yaratish faqat super admin tomonidan mumkin." });
+    }
+    
+    // Rol bazada mavjudligini tekshirish
+    const roleExists = await db('roles').where({ role_name: role }).first();
+    if (!roleExists) {
+        return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
     
     if ((role === 'operator' || role === 'manager') && locations.length === 0) {

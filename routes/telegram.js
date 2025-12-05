@@ -48,10 +48,16 @@ router.post('/finalize-approval', async (req, res) => {
         return res.status(400).json({ message: "Foydalanuvchi ID si va rol yuborilishi shart." });
     }
 
-    // Faqat admin, manager va operator rollarini qabul qilish
-    const allowedRoles = ['admin', 'manager', 'operator'];
-    if (!allowedRoles.includes(role)) {
-        return res.status(400).json({ message: "Faqat Admin, Menejer yoki Operator rollari tanlanishi mumkin." });
+    // Super admin yaratish mumkin emas
+    if (role === 'super_admin') {
+        return res.status(403).json({ message: "Super admin yaratish mumkin emas." });
+    }
+
+    // Rol bazada mavjudligini tekshirish
+    const { db } = require('../db.js');
+    const roleExists = await db('roles').where({ role_name: role }).first();
+    if (!roleExists) {
+        return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
 
     // Validatsiya

@@ -692,17 +692,18 @@ export function openApprovalModal(userId, username) {
     DOM.approvalForm.reset();
     DOM.approvalUserIdInput.value = userId;
     DOM.approvalUsernameSpan.textContent = username;
-    // Faqat admin, manager va operator rollarini ko'rsatish
-    const allowedRoles = ['admin', 'manager', 'operator'];
+    // Super admin'dan tashqari barcha rollarni ko'rsatish
     DOM.approvalRoleSelect.innerHTML = state.roles
-        .filter(r => allowedRoles.includes(r.role_name))
+        .filter(r => r.role_name !== 'super_admin') // Super admin yaratish mumkin emas
         .map(r => {
+            // Rol nomlarini o'zbek tiliga tarjima qilish
             const roleNames = {
                 'admin': 'Admin',
                 'manager': 'Menejer',
                 'operator': 'Operator'
             };
-            return `<option value="${r.role_name}">${roleNames[r.role_name] || r.role_name}</option>`;
+            const displayName = roleNames[r.role_name] || r.role_name.charAt(0).toUpperCase() + r.role_name.slice(1);
+            return `<option value="${r.role_name}">${displayName}</option>`;
         }).join('');
     toggleLocationVisibilityForApprovalForm();
     DOM.approvalModal.classList.remove('hidden');
