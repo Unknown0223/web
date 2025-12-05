@@ -80,6 +80,9 @@ const axios = require('axios');
 // --- WEBHOOK UCHUN ENDPOINT ---
 app.post('/telegram-webhook/:token', async (req, res) => {
     try {
+        console.log(`📥 [WEBHOOK] So'rov qabul qilindi. Method: ${req.method}, Path: ${req.path}, Token: ${req.params.token?.substring(0, 10)}...`);
+        console.log(`📥 [WEBHOOK] Request body mavjud: ${!!req.body}, Body keys: ${req.body ? Object.keys(req.body).join(', ') : 'yo\'q'}`);
+        
         const bot = getBot();
         const secretToken = req.params.token;
 
@@ -87,22 +90,32 @@ app.post('/telegram-webhook/:token', async (req, res) => {
         const tokenSetting = await db('settings').where({ key: 'telegram_bot_token' }).first();
         const botToken = tokenSetting ? tokenSetting.value : null;
 
+        console.log(`🔍 [WEBHOOK] Tekshiruv. Bot mavjud: ${!!bot}, Bot initialized: ${bot ? 'ha' : 'yo\'q'}, Token mavjud: ${!!botToken}, Token match: ${botToken === secretToken}`);
+
         if (bot && botToken && secretToken === botToken) {
             // Debug: webhook so'rovi kelganini log qilish
             if (req.body && req.body.message) {
                 console.log(`📨 [WEBHOOK] Xabar qabul qilindi. Chat ID: ${req.body.message.chat?.id}, Text: ${req.body.message.text?.substring(0, 50)}`);
+                console.log(`📨 [WEBHOOK] To'liq message:`, JSON.stringify(req.body.message, null, 2));
             } else if (req.body && req.body.callback_query) {
                 console.log(`📨 [WEBHOOK] Callback query qabul qilindi. Data: ${req.body.callback_query.data}`);
+                console.log(`📨 [WEBHOOK] To'liq callback_query:`, JSON.stringify(req.body.callback_query, null, 2));
+            } else {
+                console.log(`📨 [WEBHOOK] Boshqa turdagi update. Body:`, JSON.stringify(req.body, null, 2));
             }
             
+            console.log(`🔄 [WEBHOOK] bot.processUpdate() chaqirilmoqda...`);
             bot.processUpdate(req.body);
+            console.log(`✅ [WEBHOOK] bot.processUpdate() yakunlandi.`);
             res.sendStatus(200);
         } else {
             console.warn(`⚠️ [WEBHOOK] So'rov rad etildi. Bot: ${!!bot}, Token match: ${botToken === secretToken}, Secret: ${secretToken?.substring(0, 10)}...`);
+            console.warn(`⚠️ [WEBHOOK] Bot token bazadan: ${botToken?.substring(0, 10)}..., Secret token URL'dan: ${secretToken?.substring(0, 10)}...`);
             res.sendStatus(403);
         }
     } catch (error) {
         console.error('❌ [WEBHOOK] Endpoint xatoligi:', error);
+        console.error('❌ [WEBHOOK] Error stack:', error.stack);
         res.sendStatus(500);
     }
 });

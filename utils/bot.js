@@ -541,6 +541,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
     } else {
         console.log("✅ Telegram bot (webhook rejimi) uchun tayyor.");
         console.log("📝 [BOT] Event handler'lar o'rnatilmoqda...");
+        console.log(`📝 [BOT] Bot instance mavjud: ${!!bot}, Bot token: ${botToken?.substring(0, 10)}...`);
     }
 
     bot.on('polling_error', (error) => {
@@ -557,6 +558,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
         const code = match[1];
         
         console.log(`🤖 [BOT] /start komandasi qabul qilindi. Chat ID: ${chatId}, Code: ${code || 'yo\'q'}`);
+        console.log(`🤖 [BOT] /start handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
         if (code && code.startsWith('subscribe_')) {
             const newUserId = code.split('_')[1];
@@ -655,6 +657,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
         const text = msg.text;
         
         console.log(`💬 [BOT] Xabar qabul qilindi. Chat ID: ${chatId}, Text: ${text?.substring(0, 50) || 'yo\'q'}`);
+        console.log(`💬 [BOT] message event handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
         // Admin chat ID'ni avtomatik saqlash (super admin yoki admin uchun)
         try {
@@ -723,6 +726,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
     });
 
     bot.on('callback_query', async (query) => {
+        console.log(`🔄 [BOT] callback_query event handler ishga tushdi. Query:`, JSON.stringify(query, null, 2));
         const adminChatId = query.message.chat.id;
         const { data, message } = query;
         
@@ -997,6 +1001,15 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             }
         }
     });
+    
+    // Event handler'lar o'rnatilganligini tasdiqlash
+    console.log(`✅ [BOT] Barcha event handler'lar o'rnatildi. Bot ready: ${!!bot}, Initialized: ${botIsInitialized}`);
+    console.log(`✅ [BOT] Event handler'lar ro'yxati:`);
+    console.log(`   - onText(/\\/start/)`);
+    console.log(`   - on('message')`);
+    console.log(`   - on('callback_query')`);
+    console.log(`   - on('my_chat_member')`);
+    console.log(`   - on('polling_error')`);
 };
 
 const getBot = () => {
