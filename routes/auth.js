@@ -177,30 +177,33 @@ router.post('/login', async (req, res) => {
             await userRepository.resetLoginAttempts(user.id);
         }
 
-        const sessions = await db('sessions').where('sess', 'like', `%"id":${user.id}%`);
-        
-        if (sessions.length >= user.device_limit) {
-            if (!user.telegram_chat_id) {
-                await logAction(user.id, 'login_fail', 'user', user.id, { username, reason: 'Device limit reached, no Telegram', ip: ipAddress, userAgent });
-                return res.status(403).json({ 
-                    message: `Qurilmalar limiti (${user.device_limit}) to'lgan. Yangi qurilmadan kirish uchun Telegram botga ulanmagansiz. Iltimos, adminga murojaat qiling.` 
+        // Super admin uchun device limit tekshiruvi o'tkazib yuboriladi
+        if (user.role !== 'super_admin') {
+            const sessions = await db('sessions').where('sess', 'like', `%"id":${user.id}%`);
+            
+            if (sessions.length >= user.device_limit) {
+                if (!user.telegram_chat_id) {
+                    await logAction(user.id, 'login_fail', 'user', user.id, { username, reason: 'Device limit reached, no Telegram', ip: ipAddress, userAgent });
+                    return res.status(403).json({ 
+                        message: `Qurilmalar limiti (${user.device_limit}) to'lgan. Yangi qurilmadan kirish uchun Telegram botga ulanmagansiz. Iltimos, adminga murojaat qiling.` 
+                    });
+                }
+                
+                await sendToTelegram({
+                    type: 'secret_word_request',
+                    chat_id: user.telegram_chat_id,
+                    user_id: user.id,
+                    username: user.username,
+                    ip: ipAddress,
+                    device: userAgent
+                });
+                await logAction(user.id, '2fa_sent', 'user', user.id, { username, reason: 'Device limit reached', ip: ipAddress, userAgent });
+
+                return res.status(429).json({
+                    secretWordRequired: true,
+                    message: "Qurilmalar limiti to'lgan. Xavfsizlikni tasdiqlash uchun Telegramingizga yuborilgan ko'rsatmalarga amal qiling."
                 });
             }
-            
-            await sendToTelegram({
-                type: 'secret_word_request',
-                chat_id: user.telegram_chat_id,
-                user_id: user.id,
-                username: user.username,
-                ip: ipAddress,
-                device: userAgent
-            });
-            await logAction(user.id, '2fa_sent', 'user', user.id, { username, reason: 'Device limit reached', ip: ipAddress, userAgent });
-
-            return res.status(429).json({
-                secretWordRequired: true,
-                message: "Qurilmalar limiti to'lgan. Xavfsizlikni tasdiqlash uchun Telegramingizga yuborilgan ko'rsatmalarga amal qiling."
-            });
         }
 
         const [locations, rolePermissions] = await Promise.all([
@@ -244,7 +247,15 @@ router.post('/login', async (req, res) => {
 
         await logAction(user.id, 'login_success', 'user', user.id, { ip: ipAddress, userAgent });
 
-        const redirectUrl = (finalPermissions.includes('dashboard:view') || finalPermissions.includes('users:view')) ? '/admin' : '/';
+        // Super admin yoki admin uchun admin paneliga redirect
+        // Yoki kerakli permissions'ga ega foydalanuvchilar uchun
+        let redirectUrl = '/';
+        if (user.role === 'super_admin' || user.role === 'admin') {
+            redirectUrl = '/admin';
+        } else if (finalPermissions.includes('dashboard:view') || finalPermissions.includes('users:view')) {
+            redirectUrl = '/admin';
+        }
+        
         res.json({ message: "Tizimga muvaffaqiyatli kirildi.", user: req.session.user, redirectUrl });
 
     } catch (error) {

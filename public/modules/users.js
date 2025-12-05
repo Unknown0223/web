@@ -35,8 +35,8 @@ async function loadBrandsForUser(userId = null) {
             }
         }
         
-        // Brendlar ro'yxatini render qilish
-        const container = document.getElementById('user-brands-list');
+        // Brendlar ro'yxatini render qilish - user-brands-list yoki approval-brands-list
+        const container = document.getElementById('user-brands-list') || document.getElementById('approval-brands-list');
         if (!container) return;
         
         if (allBrands.length === 0) {
@@ -58,7 +58,7 @@ async function loadBrandsForUser(userId = null) {
                 margin-bottom: 10px;
                 font-weight: 600;
             ">
-                <input type="checkbox" id="select-all-brands" ${allChecked ? 'checked' : ''} 
+                <input type="checkbox" class="select-all-brands-checkbox" ${allChecked ? 'checked' : ''} 
                     style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
                 <span style="font-size: 14px; color: #4facfe;">✓ Barchasi</span>
             </label>
@@ -90,10 +90,10 @@ async function loadBrandsForUser(userId = null) {
         container.innerHTML = html;
         
         // Barchasi checkbox event listener
-        const selectAllCheckbox = document.getElementById('select-all-brands');
+        const selectAllCheckbox = container.querySelector('.select-all-brands-checkbox');
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('change', (e) => {
-                const checkboxes = document.querySelectorAll('.brand-checkbox');
+                const checkboxes = container.querySelectorAll('.brand-checkbox');
                 checkboxes.forEach(cb => {
                     cb.checked = e.target.checked;
                 });
@@ -101,7 +101,7 @@ async function loadBrandsForUser(userId = null) {
         }
         
         // Individual checkbox event listener
-        const brandCheckboxes = document.querySelectorAll('.brand-checkbox');
+        const brandCheckboxes = container.querySelectorAll('.brand-checkbox');
         brandCheckboxes.forEach(cb => {
             cb.addEventListener('change', () => {
                 const allChecked = Array.from(brandCheckboxes).every(checkbox => checkbox.checked);
@@ -112,7 +112,7 @@ async function loadBrandsForUser(userId = null) {
         });
         
         // Hover effects
-        document.querySelectorAll('.brand-checkbox-label').forEach(label => {
+        container.querySelectorAll('.brand-checkbox-label').forEach(label => {
             label.addEventListener('mouseenter', () => {
                 label.style.background = 'rgba(255,255,255,0.05)';
             });
@@ -132,6 +132,11 @@ export function renderModernUsers() {
 
     // Apply filters
     let filteredUsers = state.users.filter(user => {
+        // Super admin'ni faqat super admin o'zi ko'rsin
+        if (user.role === 'super_admin' && state.currentUser?.role !== 'super_admin') {
+            return false;
+        }
+        
         // Role filter
         if (currentFilters.role && user.role !== currentFilters.role) return false;
 
@@ -406,8 +411,14 @@ export function toggleLocationVisibilityForUserForm() {
 
 export function toggleLocationVisibilityForApprovalForm() {
     const role = DOM.approvalRoleSelect?.value;
-    const display = (role === 'operator' || role === 'manager') ? 'block' : 'none';
-    if (DOM.approvalLocationsGroup) DOM.approvalLocationsGroup.style.display = display;
+    const locationsDisplay = (role === 'operator' || role === 'manager') ? 'block' : 'none';
+    const brandsDisplay = (role === 'manager') ? 'block' : 'none';
+    if (DOM.approvalLocationsGroup) DOM.approvalLocationsGroup.style.display = locationsDisplay;
+    const approvalBrandsGroup = document.getElementById('approval-brands-group');
+    if (approvalBrandsGroup) approvalBrandsGroup.style.display = brandsDisplay;
+    if (brandsDisplay === 'block') {
+        loadBrandsForUser();
+    }
 }
 
 export function openUserModalForAdd() {
@@ -417,9 +428,11 @@ export function openUserModalForAdd() {
     if (DOM.passwordGroup) DOM.passwordGroup.style.display = 'block';
     if (DOM.passwordInput) DOM.passwordInput.required = true;
     if (DOM.userRoleSelect) {
-        DOM.userRoleSelect.innerHTML = state.roles.map(r => 
-            `<option value="${r.role_name}">${r.role_name}</option>`
-        ).join('');
+        DOM.userRoleSelect.innerHTML = state.roles
+            .filter(r => r.role_name !== 'admin' && r.role_name !== 'super_admin') // Admin va super admin yaratish mumkin emas
+            .map(r => 
+                `<option value="${r.role_name}">${r.role_name}</option>`
+            ).join('');
     }
     toggleLocationVisibilityForUserForm();
     DOM.userFormModal?.classList.remove('hidden');
@@ -436,9 +449,11 @@ export async function openUserModalForEdit(userId) {
     DOM.fullnameInput.value = user.fullname || '';
     DOM.passwordGroup.style.display = 'none';
     DOM.passwordInput.required = false;
-    DOM.userRoleSelect.innerHTML = state.roles.map(r => 
-        `<option value="${r.role_name}" ${user.role === r.role_name ? 'selected' : ''}>${r.role_name}</option>`
-    ).join('');
+    DOM.userRoleSelect.innerHTML = state.roles
+        .filter(r => r.role_name !== 'admin' && r.role_name !== 'super_admin') // Admin va super admin yaratish mumkin emas
+        .map(r => 
+            `<option value="${r.role_name}" ${user.role === r.role_name ? 'selected' : ''}>${r.role_name}</option>`
+        ).join('');
     DOM.deviceLimitInput.value = user.device_limit;
     
     document.querySelectorAll('#locations-checkbox-list input').forEach(cb => {
@@ -473,7 +488,7 @@ export async function handleUserFormSubmit(e) {
         data.password = DOM.passwordInput.value;
     }
     
-    // Menejer uchun brendlarni saqlash
+    // Manager uchun brendlarni saqlash
     if (data.role === 'manager') {
         data.brands = Array.from(document.querySelectorAll('#user-brands-list input:checked'))
             .map(cb => parseInt(cb.value));
@@ -492,6 +507,28 @@ export async function handleUserFormSubmit(e) {
         
         const result = await res.json();
         showToast(result.message);
+        
+        // Super admin yaratilganda avtomatik login qilish
+        if (result.autoLogin && result.loginData) {
+            // Login qilish
+            const loginRes = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: result.loginData.username,
+                    password: result.loginData.password
+                })
+            });
+            
+            if (loginRes.ok) {
+                const loginResult = await loginRes.json();
+                showToast("Super admin tizimga muvaffaqiyatli kirildi.", false);
+                setTimeout(() => {
+                    window.location.href = result.redirectUrl || '/admin';
+                }, 1000);
+                return;
+            }
+        }
         
         const usersRes = await fetchUsers();
         if (usersRes) {
@@ -656,7 +693,7 @@ export function openApprovalModal(userId, username) {
     DOM.approvalUserIdInput.value = userId;
     DOM.approvalUsernameSpan.textContent = username;
     DOM.approvalRoleSelect.innerHTML = state.roles
-        .filter(r => r.role_name !== 'admin')
+        .filter(r => r.role_name !== 'super_admin' && r.role_name !== 'admin') // Super admin va admin yaratish mumkin emas
         .map(r => `<option value="${r.role_name}">${r.role_name}</option>`).join('');
     toggleLocationVisibilityForApprovalForm();
     DOM.approvalModal.classList.remove('hidden');
@@ -668,8 +705,15 @@ export async function submitUserApproval(e) {
     const data = {
         role: DOM.approvalRoleSelect.value,
         locations: Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
-            .map(cb => cb.value)
+            .map(cb => cb.value),
+        brands: []
     };
+    
+    // Manager uchun brendlarni qo'shish
+    if (data.role === 'manager') {
+        data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
+            .map(cb => parseInt(cb.value));
+    }
 
     try {
         const res = await safeFetch(`/api/users/${userId}/approve`, {

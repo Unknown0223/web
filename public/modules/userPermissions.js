@@ -1,4 +1,6 @@
 // User Permissions Module
+import { state } from './state.js';
+
 let currentSelectedUser = null;
 let currentPermissionType = 'additional'; // 'additional' or 'restricted'
 
@@ -87,10 +89,18 @@ async function loadUsersForPermissions() {
         const response = await fetch('/api/users');
         const users = await response.json();
         
+        // Super admin'ni faqat super admin o'zi ko'rsin
+        const filteredUsers = users.filter(user => {
+            if (user.role === 'super_admin' && state.currentUser?.role !== 'super_admin') {
+                return false;
+            }
+            return true;
+        });
+        
         const usersList = document.getElementById('user-permissions-list');
         if (!usersList) return;
         
-        usersList.innerHTML = users.map(user => `
+        usersList.innerHTML = filteredUsers.map(user => `
             <div class="user-permission-item" data-user-id="${user.id}" data-role="${user.role}">
                 <div class="user-avatar">${(user.fullname || user.username || 'U').charAt(0).toUpperCase()}</div>
                 <div class="user-info">

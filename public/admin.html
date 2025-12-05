@@ -1525,8 +1525,7 @@
                     <div class="roles-info-banner">
                         <i data-feather="info"></i>
                         <div>
-                            <strong>Rol huquqlari:</strong> Har bir rol uchun ruxsat etilgan amallarni belgilang. 
-                            <span class="note">⚠️ "Admin" rolini o'zgartirish mumkin emas.</span>
+                            <strong>Rol huquqlari:</strong> Har bir rol uchun ruxsat etilgan amallarni belgilang.
                         </div>
                     </div>
 
@@ -2836,6 +2835,15 @@
                         <div class="form-group" id="approval-locations-group" style="display: none;">
                             <label>Biriktirilgan filiallar:</label>
                             <div class="checkbox-grid" id="approval-locations-checkbox-list"></div>
+                        </div>
+                        <div class="form-group" id="approval-brands-group" style="display: none;">
+                            <label>Biriktirilgan brendlar <span style="color: var(--red-color);">*</span></label>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 10px;">
+                                Manager uchun kamida bitta brend tanlanishi shart
+                            </p>
+                            <div id="approval-brands-list" style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2);">
+                                <!-- JS orqali to'ldiriladi -->
+                            </div>
                         </div>
                     </form>
                 </div>

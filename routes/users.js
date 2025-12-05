@@ -58,8 +58,15 @@ function getCountryName(countryCode) {
 router.get('/', isAuthenticated, hasPermission('users:view'), async (req, res) => {
     try {
         const users = await userRepository.getAllUsersWithDetails();
-        // Admin panelida barcha statusdagi userlarni ko'rsatishimiz mumkin
-        res.json(users);
+        // Super admin'ni faqat super admin o'zi ko'rsin
+        const currentUserRole = req.session.user?.role;
+        const filteredUsers = users.filter(user => {
+            if (user.role === 'super_admin' && currentUserRole !== 'super_admin') {
+                return false;
+            }
+            return true;
+        });
+        res.json(filteredUsers);
     } catch (error) {
         console.error("/api/users GET xatoligi:", error);
         res.status(500).json({ message: "Foydalanuvchilarni olishda xatolik." });
@@ -145,6 +152,7 @@ router.get('/:id/sessions', isAuthenticated, hasPermission('users:manage_session
 router.post('/', isAuthenticated, hasPermission('users:create'), async (req, res) => {
     const { username, password, role, locations = [], device_limit = 1, fullname, brands = [] } = req.body;
     const adminId = req.session.user.id;
+    const currentUserRole = req.session.user.role;
     const ipAddress = req.session.ip_address;
     const userAgent = req.session.user_agent;
     
@@ -154,15 +162,26 @@ router.post('/', isAuthenticated, hasPermission('users:create'), async (req, res
     if (password.length < 8) {
         return res.status(400).json({ message: "Parol kamida 8 belgidan iborat bo'lishi kerak." });
     }
+    
+    // Super admin yaratish faqat super admin tomonidan mumkin
+    if (role === 'super_admin' && currentUserRole !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin yaratish faqat super admin tomonidan mumkin." });
+    }
+    
     if ((role === 'operator' || role === 'manager') && locations.length === 0) {
         return res.status(400).json({ message: "Operator yoki Menejer uchun kamida bitta filial tanlanishi shart." });
+    }
+    
+    // Admin yoki Manager uchun brend belgilash majburiy
+    if ((role === 'admin' || role === 'manager') && brands.length === 0) {
+        return res.status(400).json({ message: "Admin yoki Manager uchun kamida bitta brend tanlanishi shart." });
     }
 
     try {
         const userId = await userRepository.createUser(adminId, username, password, role, device_limit, fullname, 'active', ipAddress, userAgent);
         await userRepository.updateUserLocations(adminId, userId, locations, ipAddress, userAgent);
         
-        // Menejer uchun brendlarni saqlash
+        // Manager uchun brendlarni saqlash
         if (role === 'manager' && brands.length > 0) {
             await db('user_brands').where('user_id', userId).del();
             const brandRecords = brands.map(brandId => ({
@@ -172,7 +191,23 @@ router.post('/', isAuthenticated, hasPermission('users:create'), async (req, res
             await db('user_brands').insert(brandRecords);
         }
         
-        res.status(201).json({ message: "Foydalanuvchi muvaffaqiyatli qo'shildi." });
+        // Super admin yaratilganda avtomatik login qilish imkoniyati
+        // Super admin yaratilganda, login ma'lumotlarini qaytarish (faqat bir marta)
+        if (role === 'super_admin') {
+            return res.status(201).json({ 
+                message: "Super admin muvaffaqiyatli yaratildi.",
+                autoLogin: true,
+                loginData: {
+                    username: username,
+                    password: password
+                },
+                redirectUrl: '/admin'
+            });
+        }
+        
+        res.status(201).json({ 
+            message: "Foydalanuvchi muvaffaqiyatli qo'shildi."
+        });
     } catch (error) {
         if (error.code === 'SQLITE_CONSTRAINT' || (error.message && error.message.includes('UNIQUE constraint failed'))) {
             return res.status(409).json({ message: "Bu nomdagi foydalanuvchi allaqachon mavjud." });
@@ -187,21 +222,38 @@ router.put('/:id', isAuthenticated, hasPermission('users:edit'), async (req, res
     const userId = req.params.id;
     const { role, locations = [], device_limit, fullname, brands = [] } = req.body;
     const adminId = req.session.user.id;
+    const currentUserRole = req.session.user.role;
     const ipAddress = req.session.ip_address;
     const userAgent = req.session.user_agent;
 
     if (!role) {
         return res.status(400).json({ message: "Rol kiritilishi shart." });
     }
+    
+    // Super admin yaratish faqat super admin tomonidan mumkin
+    if (role === 'super_admin' && currentUserRole !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin yaratish faqat super admin tomonidan mumkin." });
+    }
+    
+    // Admin role'ni yaratish mumkin emas - faqat super admin yaratiladi
+    if (role === 'admin') {
+        return res.status(403).json({ message: "Admin role'ni yaratish mumkin emas. Faqat super admin yaratiladi." });
+    }
+    
     if ((role === 'operator' || role === 'manager') && locations.length === 0) {
         return res.status(400).json({ message: "Operator yoki Menejer uchun kamida bitta filial tanlanishi shart." });
+    }
+    
+    // Manager uchun brend belgilash majburiy
+    if (role === 'manager' && brands.length === 0) {
+        return res.status(400).json({ message: "Manager uchun kamida bitta brend tanlanishi shart." });
     }
 
     try {
         await userRepository.updateUser(adminId, userId, role, device_limit, fullname, ipAddress, userAgent);
         await userRepository.updateUserLocations(adminId, userId, locations, ipAddress, userAgent);
         
-        // Menejer uchun brendlarni yangilash
+        // Manager uchun brendlarni yangilash
         await db('user_brands').where('user_id', userId).del();
         if (role === 'manager' && brands.length > 0) {
             const brandRecords = brands.map(brandId => ({
@@ -251,16 +303,28 @@ router.put('/:id/status', isAuthenticated, hasPermission('users:change_status'),
 // ===================================================================
 router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (req, res) => {
     const userId = req.params.id;
-    const { role, locations = [] } = req.body;
+    const { role, locations = [], brands = [] } = req.body;
     const adminId = req.session.user.id;
+    const currentUserRole = req.session.user.role;
     const ipAddress = req.session.ip_address;
     const userAgent = req.session.user_agent;
 
     if (!role) {
         return res.status(400).json({ message: "Rol tanlanishi shart." });
     }
+    
+    // Super admin yaratish faqat super admin tomonidan mumkin
+    if (role === 'super_admin' && currentUserRole !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin yaratish faqat super admin tomonidan mumkin." });
+    }
+    
     if ((role === 'operator' || role === 'manager') && locations.length === 0) {
         return res.status(400).json({ message: "Operator yoki Menejer uchun kamida bitta filial tanlanishi shart." });
+    }
+    
+    // Admin yoki Manager uchun brend belgilash majburiy
+    if ((role === 'admin' || role === 'manager') && brands.length === 0) {
+        return res.status(400).json({ message: "Admin yoki Manager uchun kamida bitta brend tanlanishi shart." });
     }
 
     try {
@@ -289,6 +353,16 @@ router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (
             if (locations && locations.length > 0) {
                 const locationsToInsert = locations.map(loc => ({ user_id: userId, location_name: loc }));
                 await trx('user_locations').insert(locationsToInsert);
+            }
+            
+            // Manager uchun brendlarni saqlash
+            await trx('user_brands').where({ user_id: userId }).del();
+            if (role === 'manager' && brands && brands.length > 0) {
+                const brandRecords = brands.map(brandId => ({
+                    user_id: userId,
+                    brand_id: brandId
+                }));
+                await trx('user_brands').insert(brandRecords);
             }
         });
 

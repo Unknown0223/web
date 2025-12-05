@@ -42,7 +42,7 @@ const initializeDB = async () => {
 
     // --- BOSHLANG'ICH MA'LUMOTLARNI (SEEDS) YARATISH VA YANGILASH ---
 
-    const initialRoles = ['admin', 'manager', 'operator'];
+    const initialRoles = ['super_admin', 'admin', 'manager', 'operator'];
     
     const initialPermissions = [
         { permission_key: 'reports:view_all', description: 'Barcha hisobotlarni ko\'rish (Pivot uchun ham)', category: 'Hisobotlar' },
@@ -78,7 +78,8 @@ const initializeDB = async () => {
     // === MUAMMO TUZATILGAN JOY ===
     // Har bir rol uchun standart huquqlar to'plami kengaytirildi
     const rolePerms = {
-        admin: initialPermissions.map(p => p.permission_key), // Admin barcha huquqlarga ega
+        super_admin: initialPermissions.map(p => p.permission_key), // Super admin barcha huquqlarga ega va cheklovsiz
+        admin: initialPermissions.map(p => p.permission_key), // Admin barcha huquqlarga ega, lekin cheklovlar bilan
         manager: [
             'dashboard:view', 
             'reports:view_all', // Barcha hisobotlarni ko'rish
@@ -131,11 +132,18 @@ const initializeDB = async () => {
         // Xatolik bo'lsa ham davom etamiz
     }
 
-    const adminUser = await db('users').where({ role: 'admin' }).first();
-    if (!adminUser) {
-        const hashedPassword = await bcrypt.hash('admin123', saltRounds);
-        await db('users').insert({ username: 'admin', password: hashedPassword, role: 'admin' });
-        console.log("Boshlang'ich admin yaratildi. Login: 'admin', Parol: 'admin123'");
+    // Super admin yaratish (agar mavjud bo'lmasa)
+    const superAdminUser = await db('users').where({ role: 'super_admin' }).first();
+    if (!superAdminUser) {
+        const hashedPassword = await bcrypt.hash('superadmin123', saltRounds);
+        await db('users').insert({ 
+            username: 'superadmin', 
+            password: hashedPassword, 
+            role: 'super_admin',
+            status: 'active',
+            device_limit: 999 // Super admin uchun cheksiz device limit
+        });
+        console.log("Boshlang'ich super admin yaratildi. Login: 'superadmin', Parol: 'superadmin123'");
     }
     
     console.log('Boshlang\'ich ma\'lumotlar (seeds) tekshirildi va qo\'shildi.');

@@ -46,8 +46,9 @@ const isAuthenticated = async (req, res, next) => {
         }
 
         // === YANGI MANTIQ: MAJBURIY TELEGRAM OBUNASINI TEKSHIRISH ===
-        // ID=1 bo'lgan admin uchun bu tekshiruv o'tkazib yuboriladi.
-        if (user.id !== 1 && !user.telegram_chat_id) {
+        // Super admin (role='super_admin') uchun bu tekshiruv o'tkazib yuboriladi.
+        const userRole = userSessionData.role;
+        if (userRole !== 'super_admin' && !user.telegram_chat_id) {
             const botUsernameSetting = await db('settings').where({ key: 'telegram_bot_username' }).first();
             const botUsername = botUsernameSetting ? botUsernameSetting.value : null;
 
@@ -83,7 +84,13 @@ const isAuthenticated = async (req, res, next) => {
  */
 const hasPermission = (requiredPermissions) => {
     return (req, res, next) => {
+        const userRole = req.session.user?.role;
         const userPermissions = req.session.user?.permissions || [];
+        
+        // Super admin barcha cheklovlardan ozod
+        if (userRole === 'super_admin') {
+            return next();
+        }
         
         const permissionsToCheck = Array.isArray(requiredPermissions) 
             ? requiredPermissions 

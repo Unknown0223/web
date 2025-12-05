@@ -14,7 +14,10 @@ const permissionExclusionGroups = {
 export function renderRoles() {
     if (!state.roles || !state.allPermissions) return;
     
-    DOM.rolesList.innerHTML = state.roles.map(role => 
+    // Super admin'ni ro'yxatdan olib tashlash
+    const filteredRoles = state.roles.filter(role => role.role_name !== 'super_admin');
+    
+    DOM.rolesList.innerHTML = filteredRoles.map(role => 
         `<li data-role="${role.role_name}">${role.role_name}</li>`
     ).join('');
     
@@ -104,16 +107,13 @@ export function handleRoleSelection(e) {
     
     applyAllPermissionExclusions();
     
-    if (roleName === 'admin') {
-        DOM.permissionsPanel.classList.add('disabled');
-    } else {
-        DOM.permissionsPanel.classList.remove('disabled');
-    }
+    // Admin uchun ham o'zgartirish imkoniyati qo'shildi
+    DOM.permissionsPanel.classList.remove('disabled');
     // console.log('🎯 Role selection completed');
 }
 
 export async function saveRolePermissions() {
-    if (!state.currentEditingRole || state.currentEditingRole === 'admin') return;
+    if (!state.currentEditingRole) return;
     
     const checkedPermissions = Array.from(DOM.permissionsGrid.querySelectorAll('input:checked'))
         .map(cb => cb.value);

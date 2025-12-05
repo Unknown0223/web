@@ -120,7 +120,31 @@ app.get('/register.html', (req, res) => {
 });
 
 // Admin paneliga kirish huquqini tekshirish
-const canAccessAdminPanel = hasPermission(['dashboard:view', 'users:view', 'settings:view', 'roles:manage', 'audit:view']);
+// Super admin yoki admin role'ga ega foydalanuvchilar yoki kerakli permissions'ga ega foydalanuvchilar kirishi mumkin
+const canAccessAdminPanel = (req, res, next) => {
+    // Agar session yoki user mavjud bo'lmasa, isAuthenticated middleware xatolik qaytaradi
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ message: "Avtorizatsiyadan o'tmagansiz." });
+    }
+    
+    const userRole = req.session.user?.role;
+    const userPermissions = req.session.user?.permissions || [];
+    
+    // Super admin yoki admin barcha cheklovlardan ozod
+    if (userRole === 'super_admin' || userRole === 'admin') {
+        return next();
+    }
+    
+    // Boshqa foydalanuvchilar uchun kerakli permissions'ga ega bo'lishi kerak
+    const requiredPermissions = ['dashboard:view', 'users:view', 'settings:view', 'roles:manage', 'audit:view'];
+    const hasAnyRequiredPermission = requiredPermissions.some(p => userPermissions.includes(p));
+    
+    if (hasAnyRequiredPermission) {
+        next();
+    } else {
+        res.status(403).json({ message: "Admin paneliga kirish uchun sizda yetarli huquq yo'q." });
+    }
+};
 
 app.get('/admin', isAuthenticated, canAccessAdminPanel, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
