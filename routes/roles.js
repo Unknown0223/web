@@ -170,8 +170,14 @@ router.put('/:role_name/requirements', isAuthenticated, hasPermission('roles:man
     const { requires_brands, requires_locations } = req.body;
     
     try {
+        const adminId = req.session.user.id;
+        const username = req.session.user?.username || 'admin';
+        
+        console.log(`📝 [ROLES] Rol talablari yangilanmoqda. Admin: ${username} (ID: ${adminId}), Rol: ${role_name}, Requires Brands: ${requires_brands}, Requires Locations: ${requires_locations}`);
+        
         const role = await db('roles').where('role_name', role_name).first();
         if (!role) {
+            console.log(`❌ [ROLES] Rol topilmadi: ${role_name}`);
             return res.status(404).json({ message: 'Rol topilmadi' });
         }
         
@@ -180,17 +186,23 @@ router.put('/:role_name/requirements', isAuthenticated, hasPermission('roles:man
             requires_locations: Boolean(requires_locations)
         });
         
+        console.log(`✅ [ROLES] Rol talablari yangilandi: ${role_name}`);
+        
         // Log to audit
-        const adminId = req.session.user.id;
         await db('audit_logs').insert({
             user_id: adminId,
             action: 'update_role_requirements',
             target_type: 'role',
             target_id: role_name,
-            details: JSON.stringify({ requires_brands, requires_locations }),
+            details: JSON.stringify({ 
+                requires_brands: Boolean(requires_brands), 
+                requires_locations: Boolean(requires_locations) 
+            }),
             ip_address: req.session.ip_address,
             user_agent: req.session.user_agent
         });
+        
+        console.log(`📋 [ROLES] Audit log yozildi. Action: update_role_requirements, Role: ${role_name}, Admin: ${username} (ID: ${adminId})`);
         
         res.json({ message: 'Rol talablari yangilandi' });
     } catch (error) {
