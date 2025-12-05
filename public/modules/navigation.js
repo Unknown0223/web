@@ -35,67 +35,89 @@ export async function navigateTo(pageId, hideLoaderAfter = false) {
     
     if (targetPage && targetLink && (targetLink.style.display !== 'none')) {
         // Avval hamma sahifalarni yashiramiz (ko'rinmaslik uchun)
-        DOM.pages.forEach(p => p.classList.remove('active'));
+        // Animatsiyalarni to'xtatish uchun transition'ni o'chirish
+        DOM.pages.forEach(p => {
+            p.style.transition = 'none';
+            p.classList.remove('active');
+            // Transform'ni reset qilish
+            p.style.transform = 'translateY(0)';
+            p.style.opacity = '0';
+        });
         
-        // Keyin kerakli sahifani ko'rsatamiz
-        targetPage.classList.add('active');
-        
-        // Linkni active qilamiz
-        document.querySelectorAll('.nav-link.active').forEach(l => l.classList.remove('active'));
-        targetLink.classList.add('active');
-        
-        window.location.hash = pageId;
-
-        // Sahifa-specific logikalar
-        if (pageId === 'audit-log' && hasPermission(state.currentUser, 'audit:view')) {
-            if (state.auditLog.initialLoad) {
-                renderAuditLogTable();
-                renderAuditLogPagination();
-            }
-        }
-        
-        if (pageId === 'pivot-reports' && !state.pivotGrid) {
-            setupPivot();
-        }
-        
-        if (pageId === 'comparison' && hasPermission(state.currentUser, 'comparison:view')) {
-            try {
-                const { setupComparison } = await import('./comparison.js');
-                setupComparison();
-            } catch (error) {
-                console.error('Comparison modulini yuklashda xatolik:', error);
-            }
-        }
-        
-        if (pageId === 'security') {
-            fetchAndRenderMySessions();
-        }
-        
-        if (pageId === 'employee-statistics' && hasPermission(state.currentUser, 'dashboard:view')) {
-            // Elementlarni ko'rsatish
-            const statsGrid = document.getElementById('kpi-stats-grid');
-            const topCard = document.getElementById('top-performers-card');
-            const detailsView = document.getElementById('employee-details-view');
+        // Kichik kechikish - DOM yangilanishi uchun
+        requestAnimationFrame(() => {
+            // Keyin kerakli sahifani ko'rsatamiz
+            targetPage.style.transition = '';
+            targetPage.style.display = 'block';
+            targetPage.style.opacity = '1';
+            targetPage.style.visibility = 'visible';
+            targetPage.classList.add('active');
             
-            if (statsGrid) statsGrid.style.display = 'grid';
-            if (topCard && state.kpi.data.length >= 3) topCard.style.display = 'block';
-            if (detailsView) detailsView.style.display = 'none';
-            
-            // Agar ma'lumotlar yo'q bo'lsa, yuklash
-            if (!state.kpi.data || state.kpi.data.length === 0) {
-                setupKpiPage();
-            }
-        }
-        
-        // Agar loader yashirilishi kerak bo'lsa
-        if (hideLoaderAfter) {
-            // Sahifa to'liq render bo'lguncha biroz kutish
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    hidePageLoader();
-                }, 200);
+            // Linkni active qilamiz
+            document.querySelectorAll('.nav-link.active').forEach(l => {
+                l.classList.remove('active');
+                // Transform'ni reset qilish
+                l.style.transform = '';
             });
-        }
+            targetLink.classList.add('active');
+            
+            window.location.hash = pageId;
+        });
+        
+        // Sahifa-specific logikalar (sahifa ko'rsatilgandan keyin)
+        setTimeout(() => {
+            if (pageId === 'audit-log' && hasPermission(state.currentUser, 'audit:view')) {
+                if (state.auditLog.initialLoad) {
+                    renderAuditLogTable();
+                    renderAuditLogPagination();
+                }
+            }
+            
+            if (pageId === 'pivot-reports' && !state.pivotGrid) {
+                setupPivot();
+            }
+            
+            if (pageId === 'comparison' && hasPermission(state.currentUser, 'comparison:view')) {
+                (async () => {
+                    try {
+                        const { setupComparison } = await import('./comparison.js');
+                        setupComparison();
+                    } catch (error) {
+                        console.error('Comparison modulini yuklashda xatolik:', error);
+                    }
+                })();
+            }
+            
+            if (pageId === 'security') {
+                fetchAndRenderMySessions();
+            }
+            
+            if (pageId === 'employee-statistics' && hasPermission(state.currentUser, 'dashboard:view')) {
+                // Elementlarni ko'rsatish
+                const statsGrid = document.getElementById('kpi-stats-grid');
+                const topCard = document.getElementById('top-performers-card');
+                const detailsView = document.getElementById('employee-details-view');
+                
+                if (statsGrid) statsGrid.style.display = 'grid';
+                if (topCard && state.kpi.data.length >= 3) topCard.style.display = 'block';
+                if (detailsView) detailsView.style.display = 'none';
+                
+                // Agar ma'lumotlar yo'q bo'lsa, yuklash
+                if (!state.kpi.data || state.kpi.data.length === 0) {
+                    setupKpiPage();
+                }
+            }
+            
+            // Agar loader yashirilishi kerak bo'lsa
+            if (hideLoaderAfter) {
+                // Sahifa to'liq render bo'lguncha biroz kutish
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        hidePageLoader();
+                    }, 200);
+                });
+            }
+        }, 100);
     }
 }
 

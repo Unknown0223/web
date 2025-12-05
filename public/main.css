@@ -1216,6 +1216,24 @@ body {
     flex-shrink: 0;
     border: 3px solid var(--border-color);
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.user-avatar.has-notification {
+    border-color: var(--red-color);
+    animation: pulse-avatar 2s infinite;
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+}
+
+@keyframes pulse-avatar {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+        border-color: var(--red-color);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+        border-color: var(--red-color);
+    }
 }
 
 .user-avatar img {

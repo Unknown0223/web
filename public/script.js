@@ -1586,11 +1586,198 @@ const renderKpiCards = (stats) => {
     };
     
     // Bildirishnomalar modal
-    function openNotificationsModal() {
+    async function openNotificationsModal() {
         const modal = document.getElementById('notifications-modal');
         modal.classList.remove('hidden');
+        
+        // Notification'larni yuklash
+        await loadNotifications();
+        
         feather.replace();
     }
+
+    // Notification'larni yuklash
+    async function loadNotifications() {
+        try {
+            const res = await fetch('/api/notifications');
+            const notificationsList = document.getElementById('notifications-list');
+            
+            if (!res || !res.ok) {
+                if (notificationsList) {
+                    notificationsList.innerHTML = '<div class="empty-state">Bildirishnomalarni yuklashda xatolik</div>';
+                }
+                return;
+            }
+
+            const data = await res.json();
+            const notifications = data.notifications || [];
+            const unreadCount = data.unread_count || 0;
+
+            // Avatar'ga pulsatsiya effekti qo'shish/olib tashlash
+            updateAvatarNotificationState(unreadCount);
+
+            // Notification badge'ni yangilash
+            const notificationBadge = document.querySelector('#notifications-btn .notification-badge');
+            if (notificationBadge) {
+                if (unreadCount > 0) {
+                    notificationBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                    notificationBadge.style.display = 'inline-block';
+                } else {
+                    notificationBadge.style.display = 'none';
+                }
+            }
+
+            if (notificationsList) {
+                if (notifications.length === 0) {
+                    notificationsList.innerHTML = '<div class="empty-state">Hozircha bildirishnomalar yo\'q</div>';
+                    return;
+                }
+
+                notificationsList.innerHTML = notifications.map(notif => {
+                    const isRead = notif.is_read;
+                    const createdDate = new Date(notif.created_at);
+                    const timeAgo = getTimeAgo(createdDate);
+                    const details = notif.details || {};
+
+                    let messageHtml = '';
+                    if (notif.type === 'comparison_difference' && details.differences) {
+                        messageHtml = `
+                            <div style="margin-top: 8px; padding: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 6px;">
+                                <strong style="display: block; margin-bottom: 6px; font-size: 12px;">Batafsil ma'lumot:</strong>
+                                <div style="font-size: 11px; line-height: 1.6;">
+                                    <div><strong>Sana:</strong> ${details.date || 'Noma\'lum'}</div>
+                                    <div><strong>Brend:</strong> ${details.brand_name || 'Noma\'lum'}</div>
+                                    <div><strong>Farqlar soni:</strong> ${details.total_differences || 0} ta filial</div>
+                                    ${details.differences && details.differences.length > 0 ? `
+                                        <div style="margin-top: 8px;">
+                                            <strong>Filiallar:</strong>
+                                            <ul style="margin: 4px 0 0 16px; padding: 0;">
+                                                ${details.differences.slice(0, 5).map(diff => `
+                                                    <li style="margin: 2px 0;">
+                                                        ${diff.location}: 
+                                                        <span style="color: ${diff.difference > 0 ? 'var(--green-color)' : 'var(--red-color)'};">
+                                                            ${diff.difference > 0 ? '+' : ''}${formatNumber(Math.abs(diff.difference))} so'm
+                                                        </span>
+                                                        ${diff.percentage !== null ? ` (${diff.percentage > 100 ? '+' : ''}${(diff.percentage - 100).toFixed(2)}%)` : ''}
+                                                    </li>
+                                                `).join('')}
+                                                ${details.differences.length > 5 ? `<li style="color: var(--text-secondary);">... va yana ${details.differences.length - 5} ta</li>` : ''}
+                                            </ul>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="notification-item ${!isRead ? 'unread' : ''}" data-id="${notif.id}">
+                            <div class="notification-icon" style="background-color: ${notif.type === 'comparison_difference' ? 'var(--red-color)' : 'var(--blue-color)'};">
+                                <i data-feather="${notif.type === 'comparison_difference' ? 'alert-triangle' : 'bell'}"></i>
+                            </div>
+                            <div class="notification-content">
+                                <strong>${notif.title}</strong>
+                                <p>${notif.message}</p>
+                                ${messageHtml}
+                                <div class="notification-time">${timeAgo}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Click event listener qo'shish
+                notificationsList.querySelectorAll('.notification-item').forEach(item => {
+                    item.addEventListener('click', async () => {
+                        const notificationId = item.dataset.id;
+                        if (!item.classList.contains('read')) {
+                            // O'qilgan deb belgilash
+                            await markNotificationAsRead(notificationId);
+                            item.classList.remove('unread');
+                            item.classList.add('read');
+                            
+                            // Unread count'ni yangilash
+                            await checkUnreadNotifications();
+                        }
+                    });
+                });
+
+                feather.replace();
+            }
+        } catch (error) {
+            const notificationsList = document.getElementById('notifications-list');
+            if (notificationsList) {
+                notificationsList.innerHTML = '<div class="empty-state">Bildirishnomalarni yuklashda xatolik</div>';
+            }
+        }
+    }
+
+    // Notification'ni o'qilgan deb belgilash
+    async function markNotificationAsRead(notificationId) {
+        try {
+            await fetch(`/api/notifications/${notificationId}/read`, {
+                method: 'PUT'
+            });
+        } catch (error) {
+            // Silent error handling
+        }
+    }
+
+    // Unread notification'larni tekshirish va avatar'ni yangilash
+    async function checkUnreadNotifications() {
+        try {
+            const res = await fetch('/api/notifications?unread_only=true');
+            if (!res || !res.ok) return;
+
+            const data = await res.json();
+            const unreadCount = data.unread_count || 0;
+
+            updateAvatarNotificationState(unreadCount);
+
+            // Notification badge'ni yangilash
+            const notificationBadge = document.querySelector('#notifications-btn .notification-badge');
+            if (notificationBadge) {
+                if (unreadCount > 0) {
+                    notificationBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                    notificationBadge.style.display = 'inline-block';
+                } else {
+                    notificationBadge.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            // Silent error handling
+        }
+    }
+
+    // Avatar'ga pulsatsiya effekti qo'shish/olib tashlash
+    function updateAvatarNotificationState(unreadCount) {
+        const avatarDisplay = document.getElementById('user-avatar-display');
+        if (avatarDisplay) {
+            if (unreadCount > 0) {
+                avatarDisplay.classList.add('has-notification');
+            } else {
+                avatarDisplay.classList.remove('has-notification');
+            }
+        }
+    }
+
+    // Vaqtni formatlash (time ago)
+    function getTimeAgo(date) {
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000); // seconds
+
+        if (diff < 60) return `${diff} soniya oldin`;
+        if (diff < 3600) return `${Math.floor(diff / 60)} daqiqa oldin`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} soat oldin`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} kun oldin`;
+        
+        return date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    // formatNumber funksiyasi allaqachon mavjud (134-qatorda)
+
+    // Sayt yuklanganda va har 30 soniyada notification'larni tekshirish
+    checkUnreadNotifications();
+    setInterval(checkUnreadNotifications, 30000); // 30 soniyada bir marta
 
     // =================================================================
     // KPI VA SESSIYA STATISTIKALARI

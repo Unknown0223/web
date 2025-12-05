@@ -21,6 +21,7 @@ router.use('/security', require('./security.js'));
 // router.use('/ostatki', require('./ostatki.js')); // O'chirilgan - ostatka analiz bo'limi olib tashlandi
 router.use('/exchange-rates', require('./exchangeRates.js'));
 router.use('/comparison', require('./comparison.js'));
+router.use('/notifications', require('./notifications.js'));
 
 const { isAuthenticated, hasPermission } = require('../middleware/auth.js');
 const { db } = require('../db.js');

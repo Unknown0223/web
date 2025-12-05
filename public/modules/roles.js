@@ -32,7 +32,33 @@ export function renderRoles() {
         </div>
     `).join('');
 
+    // Oldingi listenerlarni tozalash va yangidan biriktirish
+    DOM.permissionsGrid.removeEventListener('change', handlePermissionChange);
     DOM.permissionsGrid.addEventListener('change', handlePermissionChange);
+
+    // "Barchasini belgilash" va "tozalash" tugmalari uchun handlerlar
+    const selectAllBtn = document.getElementById('select-all-permissions-btn');
+    const deselectAllBtn = document.getElementById('deselect-all-permissions-btn');
+
+    if (selectAllBtn) {
+        selectAllBtn.onclick = () => {
+            const checkboxes = DOM.permissionsGrid.querySelectorAll('input[type=\"checkbox\"]');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+            });
+            applyAllPermissionExclusions();
+        };
+    }
+
+    if (deselectAllBtn) {
+        deselectAllBtn.onclick = () => {
+            const checkboxes = DOM.permissionsGrid.querySelectorAll('input[type=\"checkbox\"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            applyAllPermissionExclusions();
+        };
+    }
     
     // Birinchi rolni default tanlash
     if (state.roles.length > 0) {

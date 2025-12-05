@@ -70,6 +70,7 @@ const initializeDB = async () => {
         { permission_key: 'audit:view', description: 'Tizim jurnali (audit log)ni ko\'rish', category: 'Admin' },
         // Qiymatlarni Solishtirish permission'lari
         { permission_key: 'comparison:view', description: 'Qiymatlarni solishtirish bo\'limini ko\'rish', category: 'Qiymatlarni Solishtirish' },
+        { permission_key: 'comparison:edit', description: 'Solishtirish summalarini kiritish va saqlash', category: 'Qiymatlarni Solishtirish' },
         { permission_key: 'comparison:export', description: 'Solishtirish natijalarini Excel faylga eksport qilish', category: 'Qiymatlarni Solishtirish' },
         { permission_key: 'comparison:notify', description: 'Farqlar haqida operatorlarga bildirishnoma yuborish', category: 'Qiymatlarni Solishtirish' }
     ];
@@ -85,6 +86,7 @@ const initializeDB = async () => {
             'reports:edit_assigned', // Biriktirilganlarni tahrirlash
             'reports:edit_own',
             'comparison:view', // Qiymatlarni solishtirish
+            'comparison:edit', // Solishtirish summalarini kiritish
             'comparison:export' // Excel export
         ],
         operator: [

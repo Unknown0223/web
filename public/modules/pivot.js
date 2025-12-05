@@ -6,6 +6,212 @@ import { DOM } from './dom.js';
 import { safeFetch } from './api.js';
 import { showToast, debounce, hasPermission, showConfirmDialog } from './utils.js';
 
+// ================== Pivot UI lokalizatsiya (RU) ==================
+
+const PIVOT_RU_TRANSLATIONS = {
+    // Asosiy Fields oynasi
+    "Fields": "Поля",
+    "Drag and drop fields to arrange": "Перетащите поля, чтобы изменить расположение",
+    "Add calculated value": "Добавить вычисляемое значение",
+    "APPLY": "ПРИМЕНИТЬ",
+    "Apply": "Применить",
+    "CANCEL": "ОТМЕНА",
+    "Cancel": "Отмена",
+    "All Fields": "Все поля",
+    "Expand All": "Развернуть все",
+    "Report Filters": "Фильтры отчета",
+    "Columns": "Колонки",
+    "Rows": "Строки",
+    "Values": "Значения",
+    "Drop field here": "Перетащите поле сюда",
+
+    // Toolbar tugmalari
+    "Open": "Открыть",
+    "Save": "Сохранить",
+    "Export": "Экспорт",
+    "Format": "Формат",
+    "Options": "Настройки",
+    "Fullscreen": "На весь экран",
+
+    // Layout options oynasi
+    "Layout options": "Параметры макета",
+    "GRAND TOTALS": "ИТОГИ",
+    "SUBTOTALS": "ПРОМЕЖУТОЧНЫЕ ИТОГИ",
+    "Do not show grand totals": "Не показывать общие итоги",
+    "Show grand totals": "Показывать общие итоги",
+    "Show for rows only": "Показывать только для строк",
+    "Show for columns only": "Показывать только для колонок",
+    "Do not show subtotals": "Не показывать промежуточные итоги",
+    "Show subtotals": "Показывать промежуточные итоги",
+    "Show subtotal rows only": "Показывать промежуточные итоги только для строк",
+    "Show subtotal columns only": "Показывать промежуточные итоги только для колонок",
+    "LAYOUT": "МАКЕТ",
+    "Compact form": "Компактный вид",
+    "Classic form": "Классический вид",
+    "Flat form": "Плоский вид",
+
+    // Format cells oynasi
+    "Format cells": "Форматирование ячеек",
+    "CHOOSE VALUE": "ВЫБРАТЬ ЗНАЧЕНИЕ",
+    "Choose value": "Выбрать значение",
+    "Text align": "Выравнивание текста",
+    "Thousand separator": "Разделитель тысяч",
+    "Decimal separator": "Десятичный разделитель",
+    "Decimal places": "Десятичные знаки",
+    "Currency symbol": "Символ валюты",
+    "Currency align": "Выравнивание валюты",
+    "Null value": "Пустое значение",
+    "Format as percent": "Формат в процентах",
+
+    // Conditional formatting oynasi
+    "Conditional formatting": "Условное форматирование",
+    "Add": "Добавить",
+
+    // Format cells dropdown qiymatlari
+    "right": "справа",
+    "left": "слева",
+    "center": "по центру",
+    "(Space)": "(Пробел)",
+    ".": ".",
+    ",": ",",
+    "None": "Нет",
+    "false": "нет",
+    "true": "да",
+
+    // Aggregation funksiyalari
+    "Sum": "Сумма",
+    "Count": "Количество",
+    "Distinct Count": "Уникальное количество",
+    "Average": "Среднее",
+    "Median": "Медиана",
+    "Product": "Произведение",
+    "Min": "Минимум",
+    "Max": "Максимум",
+    
+    // Fields oynasidagi "Sum of" prefiksini olib tashlash
+    "Sum of Сумма": "Сумма",
+    "Sum of Сумма (число)": "Сумма (число)",
+    "Sum of": "",
+
+    // Calculation/Show values as funksiyalari
+    "% of Grand Total": "% от общего итога",
+    "% of Column": "% от колонки",
+    "% of Row": "% от строки",
+    "Index": "Индекс",
+    "Difference": "Разница",
+    "% Difference": "% разница",
+    "Population StDev": "Стандартное отклонение",
+    "% of Parent": "% от родителя",
+    "% of Parent Column": "% от родительской колонки",
+    "% of Parent Row": "% от родительской строки",
+    "Running Total": "Накопительный итог",
+    "% Running Total": "% накопительный итог",
+    "Rank": "Ранг",
+    "% Rank": "% ранг",
+    "Sample StDev": "Стандартное отклонение выборки",
+    "Population Var": "Дисперсия",
+    "Sample Var": "Дисперсия выборки",
+
+    // Boshqa umumiy matnlar
+    "Show values as": "Показать значения как",
+    "Calculation": "Вычисление",
+    "Format": "Формат",
+    "Number format": "Числовой формат",
+    "Custom format": "Пользовательский формат",
+    "Default": "По умолчанию",
+    "General": "Общий",
+    "Percentage": "Процент",
+    "Scientific": "Экспоненциальный",
+    "Fraction": "Дробь",
+    "Currency": "Валюта",
+    "Date": "Дата",
+    "Time": "Время",
+    "Text": "Текст",
+    "Custom": "Пользовательский"
+};
+
+function applyPivotRuTranslations(root = document.body) {
+    if (!root) return;
+    try {
+        const walker = document.createTreeWalker(
+            root,
+            NodeFilter.SHOW_TEXT,
+            null
+        );
+        let node;
+        while ((node = walker.nextNode())) {
+            const original = node.nodeValue;
+            if (!original) continue;
+            const trimmed = original.trim();
+            if (!trimmed) continue;
+            
+            // Avval to'liq matnni tekshiramiz
+            let translated = PIVOT_RU_TRANSLATIONS[trimmed];
+            if (translated && original.trim() === trimmed) {
+                node.nodeValue = original.replace(trimmed, translated);
+                continue;
+            }
+            
+            // Barcha aggregation prefikslarini olib tashlash (Sum of, Count of, Average of, va hokazo)
+            // Avval "Сумма" bilan maxsus holatlarni tekshiramiz
+            // Har qanday aggregation funksiyasi bilan "Сумма" bo'lib qolishi kerak
+            if (trimmed.match(/\b(Sum|Count|Distinct Count|Average|Median|Product|Min|Max|Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+Сумма/i)) {
+                if (trimmed.includes('(число)') || trimmed.includes('(чис')) {
+                    node.nodeValue = original.replace(/\b(Sum|Count|Distinct Count|Average|Median|Product|Min|Max|Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+Сумма\s*\([^)]*\)/gi, 'Сумма (число)');
+                } else {
+                    node.nodeValue = original.replace(/\b(Sum|Count|Distinct Count|Average|Median|Product|Min|Max|Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+Сумма/gi, 'Сумма');
+                }
+                continue;
+            }
+            
+            // Ruscha aggregation funksiyalari bilan ham ishlash
+            if (trimmed.match(/\b(Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+Сумма/i)) {
+                if (trimmed.includes('(число)') || trimmed.includes('(чис')) {
+                    node.nodeValue = original.replace(/\b(Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+Сумма\s*\([^)]*\)/gi, 'Сумма (число)');
+                } else {
+                    node.nodeValue = original.replace(/\b(Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+Сумма/gi, 'Сумма');
+                }
+                continue;
+            }
+            
+            // Barcha aggregation prefikslarini umumiy holatda olib tashlash
+            // Masalan: "Sum of Бренд" -> "Бренд", "Count of Филиал" -> "Филиал"
+            // Ruscha va inglizcha aggregation funksiyalari bilan ham ishlash
+            const aggregationPattern = /\b(Sum|Count|Distinct Count|Average|Median|Product|Min|Max|Сумма|Количество|Уникальное количество|Среднее|Медиана|Произведение|Минимум|Максимум)\s+of\s+/gi;
+            if (aggregationPattern.test(trimmed)) {
+                node.nodeValue = original.replace(aggregationPattern, '');
+                continue;
+            }
+            
+            // Boshqa tarjimalarni tekshiramiz
+            translated = PIVOT_RU_TRANSLATIONS[trimmed];
+            if (translated && original.trim() === trimmed) {
+                node.nodeValue = original.replace(trimmed, translated);
+            }
+        }
+    } catch (err) {
+        // Silent error handling
+    }
+}
+
+function initPivotDomLocalization() {
+    if (window.__pivotDomLocalizationInitialized) return;
+    window.__pivotDomLocalizationInitialized = true;
+
+    // Dastlab hammasini tarjima qilib chiqamiz
+    applyPivotRuTranslations();
+
+    const observer = new MutationObserver(() => {
+        // Har qanday yangi DOM o'zgarishida pivot oynasidagi matnlarni yangilab qo'yamiz
+        applyPivotRuTranslations();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
 /**
  * Показать индикатор загрузки над pivot таблицей
  */
@@ -172,21 +378,17 @@ export function setupPivot() {
             new Date() 
         ],
         onChange: debounce(async (selectedDates) => {
-            console.log('📅 [PIVOT] Sana tanlandi:', selectedDates);
-            
             const selectedCurrency = DOM.pivotCurrencySelect?.value || 'UZS';
             
             if (selectedDates.length === 1) {
                 // Bitta sana tanlansa, boshlanish va tugash sanasi bir xil
                 const singleDate = flatpickr.formatDate(selectedDates[0], 'Y-m-d');
-                console.log('📅 [PIVOT] Bitta sana:', singleDate);
                 updatePivotData(singleDate, singleDate, selectedCurrency);
                 await loadExchangeRates(singleDate, singleDate);
             } else if (selectedDates.length === 2) {
                 // Ikkita sana tanlansa, oraliq
                 const startDate = flatpickr.formatDate(selectedDates[0], 'Y-m-d');
                 const endDate = flatpickr.formatDate(selectedDates[1], 'Y-m-d');
-                console.log('📅 [PIVOT] Sana oralig\'i:', startDate, '-', endDate);
                 updatePivotData(startDate, endDate, selectedCurrency);
                 await loadExchangeRates(startDate, endDate);
             }
@@ -196,10 +398,16 @@ export function setupPivot() {
     setPivotDatePicker(fpInstance);
 
     // Инициализация WebDataRocks с русской локализацией
+    
     state.pivotGrid = new WebDataRocks({
         container: "#pivot-container",
         toolbar: true,
         beforetoolbarcreated: customizePivotToolbar,
+        localization: "ru",
+        globalization: {
+            culture: "ru-RU",
+            dateFormat: "dd.MM.yyyy"
+        },
         report: {
             dataSource: { 
                 data: [] 
@@ -226,13 +434,63 @@ export function setupPivot() {
         },
         reportcomplete: function() {
             hidePivotLoader();
+            // DOM asosida ruscha tarjimani qo'llash
+            initPivotDomLocalization();
+            
+            // "Total Sum of Сумма" ni "Сумма" ga o'zgartirish va "День" maydonini oddiy raqam sifatida ko'rsatish
+            setTimeout(() => {
+                const pivotContainer = document.getElementById('pivot-container');
+                if (pivotContainer) {
+                    // Barcha "Total Sum of" matnlarini "Сумма" ga o'zgartirish
+                    const walker = document.createTreeWalker(
+                        pivotContainer,
+                        NodeFilter.SHOW_TEXT,
+                        null
+                    );
+                    let node;
+                    while ((node = walker.nextNode())) {
+                        const text = node.nodeValue;
+                        if (text) {
+                            // "Total Sum of Сумма" ni "Сумма" ga o'zgartirish
+                            if (text.includes('Total Sum of Сумма')) {
+                                node.nodeValue = text.replace(/Total Sum of Сумма/g, 'Сумма');
+                            } else if (text.includes('Total Sum of')) {
+                                node.nodeValue = text.replace(/Total Sum of/g, '');
+                            }
+                            
+                            // "Sum of Сумма" ni "Сумма" ga o'zgartirish (Fields oynasida)
+                            if (text.includes('Sum of Сумма')) {
+                                node.nodeValue = text.replace(/Sum of Сумма/g, 'Сумма');
+                            } else if (text.includes('Sum of') && text.includes('Сумма')) {
+                                node.nodeValue = text.replace(/Sum of/g, '');
+                            }
+                            
+                            // "День" maydoni uchun - valyuta belgisi bo'lmagan oddiy raqam
+                            const parent = node.parentElement;
+                            const grandParent = parent?.parentElement;
+                            const isDayColumn = grandParent?.textContent?.includes('День') || 
+                                               parent?.textContent?.includes('День') ||
+                                               parent?.getAttribute('data-field') === 'День';
+                            
+                            if (isDayColumn && text.trim() && /^\d+[\s,]*сум/.test(text.trim())) {
+                                // Agar "День" ustunida valyuta belgisi bo'lsa, uni olib tashlash
+                                const numValue = parseInt(text.trim().replace(/[\s,]*сум.*/g, '').replace(/\s/g, ''), 10);
+                                if (!isNaN(numValue)) {
+                                    node.nodeValue = numValue.toString(); // Oddiy raqam, formatlash yo'q
+                                }
+                            } else if (isDayColumn && text.trim() && /^\d+[\s,]*$/.test(text.trim())) {
+                                // Agar "День" ustunida faqat raqam bo'lsa, oddiy ko'rinishda qoldiramiz
+                                const numValue = parseInt(text.trim().replace(/\s/g, ''), 10);
+                                if (!isNaN(numValue) && numValue > 0 && numValue <= 31) {
+                                    node.nodeValue = numValue.toString(); // Oddiy raqam
+                                }
+                            }
+                        }
+                    }
+                }
+            }, 100);
         }
     });
-    
-    // Rus tilini o'rnatish
-    if (state.pivotGrid && typeof state.pivotGrid.setLocalization === 'function') {
-        state.pivotGrid.setLocalization('/webdatarocks.ru.json');
-    }
 
     // Valyuta tanlash selector'iga event listener qo'shish
     if (DOM.pivotCurrencySelect) {
@@ -285,10 +543,7 @@ export function setupPivot() {
  * @param {string} currency - tanlangan valyuta (UZS, USD, EUR, RUB, KZT)
  */
 async function updatePivotData(startDate, endDate, currency = 'UZS') {
-    console.log('🔍 [PIVOT] updatePivotData chaqirildi:', { startDate, endDate });
-    
     if (!state.pivotGrid) {
-        console.error('❌ [PIVOT] state.pivotGrid mavjud emas!');
         return;
     }
     
@@ -297,11 +552,8 @@ async function updatePivotData(startDate, endDate, currency = 'UZS') {
     try {
         const params = new URLSearchParams({ startDate, endDate, currency });
         const url = `/api/pivot/data?${params.toString()}`;
-        console.log('📡 [PIVOT] Ma\'lumot so\'ralmoqda:', url, 'Valyuta:', currency);
         
         const res = await safeFetch(url);
-        
-        // console.log('📥 [PIVOT] Response olindi:', res?.status, res?.ok);
         
         if (!res || !res.ok) {
             throw new Error('Не удалось загрузить данные для сводной таблицы');
@@ -309,21 +561,11 @@ async function updatePivotData(startDate, endDate, currency = 'UZS') {
         
         const data = await res.json();
         
-        console.log('✅ [PIVOT] Ma\'lumot parse qilindi:', {
-            length: data.length,
-            firstItem: data[0],
-            keys: data[0] ? Object.keys(data[0]) : []
-        });
-        
-        if (data.length === 0) {
-            console.warn('⚠️ [PIVOT] Ma\'lumot topilmadi! Belgilangan sana uchun hisobotlar yo\'q.');
-        }
-        
-        // Ma'lumotlarni qayta ishlash - Дата maydonidan kun raqamini ajratib olish
+        // Ma'lumotlarni qayta ishlash - dublikatlarni olib tashlash va "День" ni oddiy raqam sifatida saqlash
         const processedData = data.map(item => {
             // Дата: "2025-10-01" -> Kun: 1
             const dateStr = item["Дата"];
-            let dayNumber = dateStr;
+            let dayNumber = null;
             
             if (dateStr && typeof dateStr === 'string') {
                 const dateParts = dateStr.split('-');
@@ -332,16 +574,25 @@ async function updatePivotData(startDate, endDate, currency = 'UZS') {
                 }
             }
             
-            return {
-                ...item,
-                "День": dayNumber, // Yangi maydon - kun raqami
-                "Дата полная": dateStr // To'liq sana
+            // Faqat kerakli maydonlarni qoldiramiz, dublikatlarni olib tashlaymiz
+            const cleanItem = {
+                "ID": item["ID"],
+                "Дата": dateStr, // Faqat bitta "Дата"
+                "День": dayNumber, // Oddiy raqam sifatida (valyuta emas)
+                "Бренд": item["Бренд"],
+                "Филиал": item["Филиал"],
+                "Сотрудник": item["Сотрудник"],
+                "Показатель": item["Показатель"],
+                "Тип оплаты": item["Тип оплаты"],
+                "Сумма": item["Сумма"], // Valyuta bilan
+                "Сумма_число": typeof item["Сумма"] === 'number' ? item["Сумма"] : parseFloat(item["Сумма"]) || 0, // Valyutasiz, faqat raqam
+                "Комментарий": item["Комментарий"] || ""
             };
-        });
-        
-        console.log('🔄 [PIVOT] Ma\'lumotlar qayta ishlandi:', {
-            length: processedData.length,
-            firstProcessed: processedData[0]
+            
+            // "Дата полная" ni faqat filter uchun qo'shamiz, lekin Fields oynasida ko'rsatmaymiz
+            // cleanItem["Дата полная"] = dateStr; // Bu maydonni olib tashlaymiz, chunki dublikat
+            
+            return cleanItem;
         });
         
         // Valyuta belgisi va formatini aniqlash
@@ -373,13 +624,20 @@ async function updatePivotData(startDate, endDate, currency = 'UZS') {
                     { 
                         uniqueName: "Сумма",
                         aggregation: "sum",
-                        format: "currency"
+                        format: "currency",
+                        caption: "Сумма"  // Valyuta bilan
+                    },
+                    {
+                        uniqueName: "Сумма_число",
+                        aggregation: "sum",
+                        format: "number",
+                        caption: "Сумма (число)"  // Valyutasiz, faqat raqam
                     }
                 ],
                 reportFilters: [
                     { uniqueName: "Показатель" },
                     { uniqueName: "Сотрудник" },
-                    { uniqueName: "Дата полная" }  // To'liq sana filter uchun
+                    { uniqueName: "Дата" }  // Faqat bitta "Дата" filter
                 ]
             },
             options: {
@@ -393,34 +651,44 @@ async function updatePivotData(startDate, endDate, currency = 'UZS') {
                 configuratorActive: false,
                 datePattern: "dd.MM.yyyy"
             },
-            formats: [{
-                name: "currency",
-                thousandsSeparator: " ",
-                decimalPlaces: 0,
-                currencySymbol: currencyFormat,
-                currencySymbolAlign: currency === 'UZS' ? "right" : "left",
-                nullValue: "0"
-            }]
+            formats: [
+                {
+                    name: "currency",
+                    thousandsSeparator: " ",
+                    decimalPlaces: 0,
+                    currencySymbol: currencyFormat,
+                    currencySymbolAlign: currency === 'UZS' ? "right" : "left",
+                    nullValue: "0"
+                },
+                {
+                    name: "number",
+                    thousandsSeparator: " ",
+                    decimalPlaces: 0,
+                    nullValue: "-"
+                },
+                {
+                    name: "day",
+                    thousandsSeparator: "",
+                    decimalPlaces: 0,
+                    nullValue: "-"
+                }
+            ]
         };
         
-        // console.log('� [PIVOT] Report konfiguratsiyasi:', pivotReport);
         
         // Обновляем отчет полностью
         state.pivotGrid.setReport(pivotReport);
         
-        // console.log('✅ [PIVOT] setReport yuborildi');
         
         // Сворачиваем все данные по умолчанию (пользователь сам развернёт нужное)
         setTimeout(() => {
             if (data.length > 0) {
-                // console.log('🔒 [PIVOT] collapseAllData chaqirilmoqda...');
                 state.pivotGrid.collapseAllData();
             }
             hidePivotLoader();
         }, 500);
         
     } catch (error) {
-        // console.error('Ошибка загрузки данных pivot:', error);
         showToast(error.message, true);
         hidePivotLoader();
         
@@ -501,7 +769,6 @@ export async function renderTemplatesAsTags() {
         feather.replace();
         
     } catch (error) {
-        // console.error('Ошибка загрузки шаблонов:', error);
         showToast(error.message, true);
     }
 }
@@ -551,7 +818,6 @@ export async function savePivotTemplate() {
         renderTemplatesAsTags();
         
     } catch (error) {
-        // console.error('Ошибка сохранения шаблона:', error);
         showToast(error.message, true);
     }
 }
@@ -732,7 +998,6 @@ export async function handleTemplateActions(e) {
                     renderTemplatesAsTags();
                     
                 } catch (error) {
-                    // console.error('Ошибка редактирования шаблона:', error);
                     showToast(error.message, true);
                 }
             }
@@ -763,7 +1028,6 @@ export async function handleTemplateActions(e) {
                     renderTemplatesAsTags();
                     
                 } catch (error) {
-                    // console.error('Ошибка удаления шаблона:', error);
                     showToast(error.message, true);
                 }
             }
@@ -787,7 +1051,6 @@ export async function handleTemplateActions(e) {
             // Templates panel doimo ochiq turadi
             
         } catch (error) {
-            // console.error('Ошибка загрузки шаблона:', error);
             showToast(error.message, true);
         }
     }
@@ -974,7 +1237,6 @@ async function loadExchangeRates(startDate, endDate, forceRefresh = false) {
         ratesContainer.style.display = 'block';
         
     } catch (error) {
-        console.error('Kurslarni yuklashda xatolik:', error);
         ratesContainer.style.display = 'none';
     } finally {
         if (refreshBtn) {

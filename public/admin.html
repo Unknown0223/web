@@ -177,7 +177,7 @@
                 </a>
                 <a href="#pivot-reports" class="nav-link" data-page="pivot-reports" data-permission="reports:view_all">
                     <i data-feather="bar-chart-2"></i>
-                    <span>Интерактивные отчеты</span>
+                    <span>Interaktiv hisobotlar</span>
                 </a>
                 <a href="#comparison" class="nav-link" data-page="comparison" data-permission="comparison:view">
                     <i data-feather="shuffle"></i>
@@ -600,19 +600,19 @@
                 </div>
             </section>
 
-            <!-- Интерактивные отчеты (Pivot) -->
+            <!-- Interaktiv hisobotlar (Pivot) -->
             <section id="pivot-reports" class="page" data-permission="reports:view_all">
                 <div class="page-header">
                     <div>
-                        <h1 class="page-title">Интерактивные отчеты</h1>
+                        <h1 class="page-title">Interaktiv hisobotlar</h1>
                         <p class="page-description">
-                            Здесь вы можете анализировать все отчеты, фильтровать данные и получать сводные таблицы в удобном виде.
+                            Bu bo'limda barcha hisobotlarni qulay shaklda tahlil qilish, filtrdan o'tkazish va pivot jadvallar ko'rinishida ko'rishingiz mumkin.
                         </p>
                     </div>
                     <div style="display: flex; gap: 15px; align-items: flex-end;">
                     <div class="form-group" style="min-width: 300px;">
-                        <label for="pivot-date-filter">Период отчетов</label>
-                        <input type="text" id="pivot-date-filter" class="form-control" placeholder="Выберите диапазон дат...">
+                        <label for="pivot-date-filter">Hisobotlar davri</label>
+                        <input type="text" id="pivot-date-filter" class="form-control" placeholder="Sana oralig'ini tanlang...">
                         </div>
                         <div class="form-group" style="min-width: 200px;">
                             <label for="pivot-currency-select">Ko'rish valyutasi</label>
@@ -656,10 +656,10 @@
                     </div>
                 </div>
                 
-                <!-- Сохранённые шаблоны - doimo ochiq -->
+                <!-- Saqlangan shablonlar - doimo ochiq -->
                 <div id="templates-panel" class="card templates-panel" style="margin-bottom: 20px;">
                     <div class="templates-panel-header">
-                        <h3 class="card-title">Сохранённые шаблоны</h3>
+                        <h3 class="card-title">Saqlangan shablonlar</h3>
                     </div>
                     <div id="templates-tag-list" class="templates-tag-list"></div>
                 </div>
@@ -673,18 +673,18 @@
                     <div>
                         <h1 class="page-title">Qiymatlarni Solishtirish</h1>
                         <p class="page-description">
-                            Operatorlar kiritgan qiymatlarni umumiy qiymatlar bilan solishtirish. Har bir brend bo'yicha umumiy summalarni ko'rish va farqlarni aniqlash.
+                            Filiallar bo'yicha operatorlar kiritgan summalarni solishtirish summasi bilan taqqoslash. Har bir filial uchun operator summa avtomatik hisoblanadi, solishtirish summa qo'lda kiritiladi.
                         </p>
                     </div>
-                    <div style="display: flex; gap: 15px; align-items: flex-end;">
-                        <div class="form-group" style="min-width: 300px;">
-                            <label for="comparison-date-filter">Sana oralig'i</label>
-                            <input type="text" id="comparison-date-filter" class="form-control" placeholder="Sana oralig'ini tanlang...">
-                        </div>
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
                         <div class="form-group" style="min-width: 200px;">
-                            <label for="comparison-brand-select">Brend</label>
-                            <select id="comparison-brand-select" class="form-control">
-                                <option value="">Barcha brendlar</option>
+                            <label for="comparison-date-filter">Solishtirish Sanasi</label>
+                            <input type="date" id="comparison-date-filter" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="min-width: 250px;">
+                            <label for="comparison-brand-select">Solishtirish Brendi (faqat bitta tanlash mumkin)</label>
+                            <select id="comparison-brand-select" class="form-control" required>
+                                <option value="">Brendni tanlang...</option>
                             </select>
                         </div>
                         <div class="form-group" style="min-width: 150px;">
@@ -694,47 +694,57 @@
                             </button>
                         </div>
                     </div>
+                    <div id="comparison-selected-brand" style="margin-top: 15px; padding: 10px; background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(25, 135, 84, 0.05)); border-radius: 8px; display: none;">
+                        <strong>Tanlangan Brend:</strong> <span id="comparison-brand-name">-</span>
+                    </div>
                 </div>
 
                 <div class="card" style="margin-bottom: 20px;">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3 class="card-title">Solishtirish Natijalari</h3>
-                        <div style="display: flex; gap: 10px;">
-                            <button id="comparison-export-btn" class="btn btn-success" data-permission="comparison:export">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h3 class="card-title">Solishtirish Jadvali</h3>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="comparison-save-btn" class="btn btn-success" data-permission="comparison:edit" style="display: none;">
+                                <i data-feather="save"></i>
+                                <span>Saqlash</span>
+                            </button>
+                            <button id="comparison-import-btn" class="btn btn-warning" data-permission="comparison:edit" style="display: none;">
+                                <i data-feather="upload"></i>
+                                <span>Excel Import</span>
+                            </button>
+                            <input type="file" id="comparison-import-file" accept=".xlsx,.xls" style="display: none;">
+                            <button id="comparison-template-btn" class="btn btn-secondary" data-permission="comparison:view" style="display: none;">
+                                <i data-feather="file-text"></i>
+                                <span>Shablon Yuklab Olish</span>
+                            </button>
+                            <button id="comparison-export-btn" class="btn btn-info" data-permission="comparison:export" style="display: none;">
                                 <i data-feather="download"></i>
                                 <span>Excel Export</span>
-                            </button>
-                            <button id="comparison-notify-btn" class="btn btn-warning" data-permission="comparison:notify">
-                                <i data-feather="send"></i>
-                                <span>Bildirishnoma Yuborish</span>
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="comparison-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                            <!-- Summary kartalar bu yerda -->
-                        </div>
                         <div id="comparison-table-container">
-                            <table id="comparison-table" class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Brend</th>
-                                        <th>Umumiy Summa</th>
-                                        <th>Operator</th>
-                                        <th>Operator Summasi</th>
-                                        <th>Foiz</th>
-                                        <th>Hisobotlar Soni</th>
-                                        <th>Filiallar</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="comparison-table-body">
-                                    <tr>
-                                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                                            Ma'lumotlarni yuklash uchun sana oralig'ini tanlang va "Qidirish" tugmasini bosing.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div id="comparison-empty-state">
+                                <i data-feather="search"></i>
+                                <p>Sana va brendni tanlab, "Qidirish" tugmasini bosing</p>
+                            </div>
+                            <div class="comparison-table-wrapper" style="display: none;">
+                                <table id="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>FILIALLAR</th>
+                                            <th>Operator kiritgan summalar</th>
+                                            <th>Solishtirish summasi (qo'lda kiritiladi)</th>
+                                            <th>Farq</th>
+                                            <th>Foiz (%)</th>
+                                            <th>Holat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="comparison-table-body">
+                                        <!-- Ma'lumotlar bu yerda -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1541,11 +1551,11 @@
                                     <span>Huquqlarni sozlash</span>
                                 </h3>
                                 <div class="permissions-panel-actions">
-                                    <button id="select-all-permissions-btn" class="btn-icon" title="Barchasini belgilash">
-                                        <i data-feather="check-square"></i>
+                                    <button id="select-all-permissions-btn" class="btn-icon" title="Barchasini belgilash" aria-label="Barchasini belgilash">
+                                        ✔
                                     </button>
-                                    <button id="deselect-all-permissions-btn" class="btn-icon" title="Barchasini olib tashlash">
-                                        <i data-feather="square"></i>
+                                    <button id="deselect-all-permissions-btn" class="btn-icon" title="Barchasini olib tashlash" aria-label="Barchasini olib tashlash">
+                                        ✖
                                     </button>
                                 </div>
                             </div>
@@ -1804,8 +1814,8 @@
                             <span>Jurnal yozuvlari</span>
                         </h3>
                         <div class="audit-table-actions">
-                            <button id="audit-refresh-btn" class="btn-icon" title="Yangilash">
-                                <i data-feather="refresh-cw"></i>
+                            <button id="audit-refresh-btn" class="btn-icon" title="Yangilash" aria-label="Yangilash">
+                                ⟳
                             </button>
                         </div>
                     </div>
@@ -2662,21 +2672,21 @@
                                 <label for="bot-token">Bot Token</label>
                                 <div class="secure-input-wrapper">
                                     <input type="password" id="bot-token" class="form-control" placeholder="Token yashirilgan" autocomplete="off">
-                                    <button type="button" class="btn-icon toggle-visibility-btn" title="Ko'rsatish/Yashirish"><i data-feather="eye"></i></button>
+                                    <button type="button" class="btn-icon toggle-visibility-btn" title="Ko'rsatish/Yashirish" aria-label="Ko'rsatish/Yashirish">👁</button>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="group-id">Guruh ID</label>
                                 <div class="secure-input-wrapper">
                                     <input type="password" id="group-id" class="form-control" placeholder="ID yashirilgan" autocomplete="off">
-                                    <button type="button" class="btn-icon toggle-visibility-btn" title="Ko'rsatish/Yashirish"><i data-feather="eye"></i></button>
+                                    <button type="button" class="btn-icon toggle-visibility-btn" title="Ko'rsatish/Yashirish" aria-label="Ko'rsatish/Yashirish">👁</button>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="admin-chat-id">Adminning Telegram Chat ID'si</label>
                                 <div class="secure-input-wrapper">
                                     <input type="password" id="admin-chat-id" class="form-control" placeholder="ID yashirilgan" autocomplete="off">
-                                    <button type="button" class="btn-icon toggle-visibility-btn" title="Ko'rsatish/Yashirish"><i data-feather="eye"></i></button>
+                                    <button type="button" class="btn-icon toggle-visibility-btn" title="Ko'rsatish/Yashirish" aria-label="Ko'rsatish/Yashirish">👁</button>
                                 </div>
                             </div>
                              <div class="form-group">

@@ -306,6 +306,11 @@ exports.seed = async function(knex) {
       category: 'Qiymatlarni Solishtirish' 
     },
     { 
+      permission_key: 'comparison:edit', 
+      description: 'Solishtirish summalarini kiritish va saqlash', 
+      category: 'Qiymatlarni Solishtirish' 
+    },
+    { 
       permission_key: 'comparison:export', 
       description: 'Solishtirish natijalarini Excel faylga eksport qilish', 
       category: 'Qiymatlarni Solishtirish' 

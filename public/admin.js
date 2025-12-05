@@ -109,8 +109,10 @@ async function init() {
         // Event listener'larni o'rnatish
         setupEventListeners();
         
-        // Feather ikonkalarini yangilash
+    // Feather ikonkalarini yangilash (agar kutubxona mavjud bo'lsa)
+    if (window.feather) {
         feather.replace();
+    }
         
         // Real-time funksiyalarni ishga tushirish
         initRealTime();
@@ -309,19 +311,34 @@ function setupEventListeners() {
     // Parol ko'rish/yashirish tugmasi
     document.body.addEventListener('click', (e) => {
         const toggleBtn = e.target.closest('.toggle-visibility-btn');
-        if (toggleBtn) {
-            const input = toggleBtn.closest('.secure-input-wrapper')?.querySelector('input');
-            const icon = toggleBtn.querySelector('i');
-            if (input && icon) {
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.setAttribute('data-feather', 'eye-off');
-                } else {
-                    input.type = 'password';
-                    icon.setAttribute('data-feather', 'eye');
-                }
-                feather.replace();
+        if (!toggleBtn) return;
+
+        const wrapper = toggleBtn.closest('.secure-input-wrapper');
+        const input = wrapper?.querySelector('input');
+        if (!input) return;
+
+        const icon = toggleBtn.querySelector('i');
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            // Feather ikonkasi bo'lsa
+            if (icon) {
+                icon.setAttribute('data-feather', 'eye-off');
+            } else {
+                // Emoji / matnli tugma bo'lsa
+                toggleBtn.textContent = '🙈';
             }
+        } else {
+            input.type = 'password';
+            if (icon) {
+                icon.setAttribute('data-feather', 'eye');
+            } else {
+                toggleBtn.textContent = '👁';
+            }
+        }
+
+        if (window.feather) {
+            feather.replace();
         }
     });
 }

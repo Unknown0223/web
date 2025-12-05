@@ -14,6 +14,14 @@ export function renderTableSettings() {
         const container = document.getElementById(containerId);
         if (!container) return;
         
+        // Ustunlar, Brendlar, Filiallar uchun grid ko'rinish va scroll
+        const gridContainers = ['columns-settings', 'brands-settings', 'locations-settings'];
+        if (gridContainers.includes(containerId)) {
+            container.classList.add('settings-grid');
+        } else {
+            container.classList.remove('settings-grid');
+        }
+        
         if (items.length === 0) {
             container.innerHTML = `<p style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">${emptyText}</p>`;
             return;
@@ -37,11 +45,11 @@ export function renderTableSettings() {
                     <span class="setting-name" style="font-weight: 500; font-size: 14px;">${item}</span>
                 </div>
                 <div style="display: flex; gap: 5px;">
-                    <button class="btn-icon edit-setting-btn" data-name="${item}" title="Tahrirlash">
-                        <i data-feather="edit-2"></i>
+                    <button class="btn-icon edit-setting-btn" data-name="${item}" title="Tahrirlash" aria-label="Tahrirlash">
+                        ✏️
                     </button>
-                    <button class="delete-item-btn btn-icon" data-name="${item}" title="O'chirish">
-                        <i data-feather="trash-2"></i>
+                    <button class="delete-item-btn btn-icon" data-name="${item}" title="O'chirish" aria-label="O'chirish">
+                        🗑️
                     </button>
                 </div>
             </div>
@@ -70,7 +78,9 @@ export function renderTableSettings() {
         `).join('');
     }
 
-    feather.replace();
+    if (window.feather) {
+        feather.replace();
+    }
 }
 
 export function renderGeneralSettings() {

@@ -156,7 +156,9 @@ export function renderAuditLogTable() {
         `;
     }).join('');
     
-    feather.replace();
+    if (window.feather) {
+        feather.replace();
+    }
 }
 
 export function renderAuditLogPagination() {
@@ -170,14 +172,16 @@ export function renderAuditLogPagination() {
     
     DOM.auditLogPagination.innerHTML = `
         <button id="audit-prev-page-btn" class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''}>
-            <i data-feather="chevron-left"></i>
+            ‹
         </button>
         <span id="page-info">Sahifa ${currentPage} / ${pages}</span>
         <button id="audit-next-page-btn" class="pagination-btn" ${currentPage === pages ? 'disabled' : ''}>
-            <i data-feather="chevron-right"></i>
+            ›
         </button>
     `;
-    feather.replace();
+    if (window.feather) {
+        feather.replace();
+    }
 }
 
 function generateLogDescription(log) {
