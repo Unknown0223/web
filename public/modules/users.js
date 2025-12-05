@@ -1681,7 +1681,15 @@ function setupRequestsFilters() {
             const pendingUsers = state.users.filter(u => u.status === 'pending');
             if (pendingUsers.length === 0) return;
             
-            if (!await window.showConfirm(`Barcha ${pendingUsers.length} ta so'rovni tasdiqlashni xohlaysizmi?`, 'Barchani tasdiqlash')) return;
+            const confirmed = await showConfirmDialog({
+                title: 'Barchani tasdiqlash',
+                message: `Barcha ${pendingUsers.length} ta so'rovni tasdiqlashni xohlaysizmi?`,
+                confirmText: 'Ha, tasdiqlash',
+                cancelText: 'Bekor qilish',
+                type: 'warning',
+                icon: 'check-circle'
+            });
+            if (!confirmed) return;
             
             try {
                 for (const user of pendingUsers) {
@@ -1704,7 +1712,15 @@ function setupRequestsFilters() {
         bulkApproveBtn.addEventListener('click', async () => {
             if (selectedRequests.size === 0) return;
             
-            if (!await window.showConfirm(`Tanlangan ${selectedRequests.size} ta so'rovni tasdiqlashni xohlaysizmi?`, 'Tanlanganlarni tasdiqlash')) return;
+            const confirmed = await showConfirmDialog({
+                title: 'Tanlanganlarni tasdiqlash',
+                message: `Tanlangan ${selectedRequests.size} ta so'rovni tasdiqlashni xohlaysizmi?`,
+                confirmText: 'Ha, tasdiqlash',
+                cancelText: 'Bekor qilish',
+                type: 'warning',
+                icon: 'check-circle'
+            });
+            if (!confirmed) return;
             
             try {
                 for (const userId of selectedRequests) {
@@ -1728,7 +1744,15 @@ function setupRequestsFilters() {
         bulkRejectBtn.addEventListener('click', async () => {
             if (selectedRequests.size === 0) return;
             
-            if (!await window.showConfirm(`Tanlangan ${selectedRequests.size} ta so'rovni rad etishni xohlaysizmi?`, 'Tanlanganlarni rad etish')) return;
+            const confirmed = await showConfirmDialog({
+                title: 'Tanlanganlarni rad etish',
+                message: `Tanlangan ${selectedRequests.size} ta so'rovni rad etishni xohlaysizmi?`,
+                confirmText: 'Ha, rad etish',
+                cancelText: 'Bekor qilish',
+                type: 'danger',
+                icon: 'x-circle'
+            });
+            if (!confirmed) return;
             
             try {
                 for (const userId of selectedRequests) {
@@ -1762,7 +1786,16 @@ window.approveRequest = async function(userId) {
 };
 
 window.rejectRequest = async function(userId) {
-    if (!await window.showConfirm('Ushbu so\'rovni rad etishni xohlaysizmi?', 'So\'rovni rad etish')) return;
+    const confirmed = await showConfirmDialog({
+        title: 'So\'rovni rad etish',
+        message: 'Ushbu so\'rovni rad etishni xohlaysizmi?',
+        confirmText: 'Ha, rad etish',
+        cancelText: 'Bekor qilish',
+        type: 'danger',
+        icon: 'x-circle'
+    });
+    
+    if (!confirmed) return;
     
     try {
         await api.post('/api/admin/users/reject', { userId });
