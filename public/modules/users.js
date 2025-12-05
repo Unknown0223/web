@@ -411,8 +411,15 @@ export function toggleLocationVisibilityForUserForm() {
 
 export function toggleLocationVisibilityForApprovalForm() {
     const role = DOM.approvalRoleSelect?.value;
-    const locationsDisplay = (role === 'operator' || role === 'manager') ? 'block' : 'none';
-    const brandsDisplay = (role === 'manager') ? 'block' : 'none';
+    
+    // Rol talablarini state'dan olish
+    const roleData = state.roles.find(r => r.role_name === role);
+    const requiresLocations = roleData ? (roleData.requires_locations || false) : false;
+    const requiresBrands = roleData ? (roleData.requires_brands || false) : false;
+    
+    const locationsDisplay = requiresLocations ? 'block' : 'none';
+    const brandsDisplay = requiresBrands ? 'block' : 'none';
+    
     if (DOM.approvalLocationsGroup) DOM.approvalLocationsGroup.style.display = locationsDisplay;
     const approvalBrandsGroup = document.getElementById('approval-brands-group');
     if (approvalBrandsGroup) approvalBrandsGroup.style.display = brandsDisplay;

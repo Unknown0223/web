@@ -60,14 +60,19 @@ router.post('/finalize-approval', async (req, res) => {
         return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
 
-    // Validatsiya
-    if ((role === 'operator' || role === 'manager') && locations.length === 0) {
-        return res.status(400).json({ message: "Operator yoki Menejer uchun kamida bitta filial tanlanishi shart." });
+    // Rol talablarini bazadan olish
+    const roleData = await db('roles').where({ role_name: role }).first();
+    if (!roleData) {
+        return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
     
-    // Admin yoki Manager uchun brend belgilash majburiy
-    if ((role === 'admin' || role === 'manager') && brands.length === 0) {
-        return res.status(400).json({ message: "Admin yoki Manager uchun kamida bitta brend tanlanishi shart." });
+    // Rol talablariga ko'ra validatsiya
+    if (roleData.requires_locations && locations.length === 0) {
+        return res.status(400).json({ message: `"${role}" roli uchun kamida bitta filial tanlanishi shart.` });
+    }
+    
+    if (roleData.requires_brands && brands.length === 0) {
+        return res.status(400).json({ message: `"${role}" roli uchun kamida bitta brend tanlanishi shart.` });
     }
 
     try {

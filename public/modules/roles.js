@@ -509,6 +509,24 @@ function openAddRoleModal() {
                         <input type="text" class="form-control" id="new-role-name" placeholder="masalan: viewer, editor">
                         <small class="form-text text-muted">Faqat lotin harflari va pastki chiziq (_) ishlatiladi</small>
                     </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="new-role-requires-locations" style="margin-right: 8px;">
+                            Filiallar belgilanishi shart
+                        </label>
+                        <small class="form-text text-muted" style="display: block; margin-top: 5px;">
+                            Bu rol uchun foydalanuvchi tasdiqlanganda filiallar tanlanishi majburiy bo'ladi
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="new-role-requires-brands" style="margin-right: 8px;">
+                            Brendlar belgilanishi shart
+                        </label>
+                        <small class="form-text text-muted" style="display: block; margin-top: 5px;">
+                            Bu rol uchun foydalanuvchi tasdiqlanganda brendlar tanlanishi majburiy bo'ladi
+                        </small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Bekor qilish</button>
@@ -536,6 +554,8 @@ function openAddRoleModal() {
 async function createNewRole() {
     const input = document.getElementById('new-role-name');
     const roleName = input.value.trim().toLowerCase();
+    const requiresLocations = document.getElementById('new-role-requires-locations').checked;
+    const requiresBrands = document.getElementById('new-role-requires-brands').checked;
     
     // Validation
     if (!roleName) {
@@ -564,7 +584,11 @@ async function createNewRole() {
         const response = await safeFetch('/api/roles', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role_name: roleName })
+            body: JSON.stringify({ 
+                role_name: roleName,
+                requires_locations: requiresLocations,
+                requires_brands: requiresBrands
+            })
         });
         
         if (!response.ok) throw new Error('Failed to create role');

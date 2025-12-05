@@ -318,19 +318,19 @@ router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (
         return res.status(403).json({ message: "Super admin yaratish faqat super admin tomonidan mumkin." });
     }
     
-    // Rol bazada mavjudligini tekshirish
-    const roleExists = await db('roles').where({ role_name: role }).first();
-    if (!roleExists) {
+    // Rol bazada mavjudligini tekshirish va talablarini olish
+    const roleData = await db('roles').where({ role_name: role }).first();
+    if (!roleData) {
         return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
     
-    if ((role === 'operator' || role === 'manager') && locations.length === 0) {
-        return res.status(400).json({ message: "Operator yoki Menejer uchun kamida bitta filial tanlanishi shart." });
+    // Rol talablariga ko'ra validatsiya
+    if (roleData.requires_locations && locations.length === 0) {
+        return res.status(400).json({ message: `"${role}" roli uchun kamida bitta filial tanlanishi shart.` });
     }
     
-    // Admin yoki Manager uchun brend belgilash majburiy
-    if ((role === 'admin' || role === 'manager') && brands.length === 0) {
-        return res.status(400).json({ message: "Admin yoki Manager uchun kamida bitta brend tanlanishi shart." });
+    if (roleData.requires_brands && brands.length === 0) {
+        return res.status(400).json({ message: `"${role}" roli uchun kamida bitta brend tanlanishi shart.` });
     }
 
     try {
@@ -791,3 +791,4 @@ router.post('/password-change-requests/:id/reject', isAuthenticated, hasPermissi
 });
 
 module.exports = router;
+

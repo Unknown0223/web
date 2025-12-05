@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/', isAuthenticated, hasPermission('roles:manage'), async (req, res) => {
     try {
         const [roles, permissions, rolePermissions] = await Promise.all([
-            db('roles').select('role_name').orderBy('role_name'),
+            db('roles').select('role_name', 'requires_brands', 'requires_locations').orderBy('role_name'),
             db('permissions').select('*').orderBy('category', 'permission_key'),
             db('role_permissions').select('*')
         ]);
@@ -30,7 +30,9 @@ router.get('/', isAuthenticated, hasPermission('roles:manage'), async (req, res)
                 .map(rp => rp.permission_key);
             return {
                 role_name: role.role_name,
-                permissions: assignedPermissions
+                permissions: assignedPermissions,
+                requires_brands: role.requires_brands || false,
+                requires_locations: role.requires_locations || false
             };
         });
 
@@ -110,7 +112,7 @@ router.get('/permissions/overview', isAuthenticated, hasPermission('roles:manage
 
 // Create new role
 router.post('/', isAuthenticated, hasPermission('roles:manage'), async (req, res) => {
-    const { role_name } = req.body;
+    const { role_name, requires_brands = false, requires_locations = false } = req.body;
     
     if (!role_name || !/^[a-z_]+$/.test(role_name)) {
         return res.status(400).json({ message: 'Noto\'g\'ri rol nomi formati' });
@@ -124,7 +126,11 @@ router.post('/', isAuthenticated, hasPermission('roles:manage'), async (req, res
         }
         
         // Create new role
-        await db('roles').insert({ role_name });
+        await db('roles').insert({ 
+            role_name,
+            requires_brands: Boolean(requires_brands),
+            requires_locations: Boolean(requires_locations)
+        });
         
         // Log to audit
         const adminId = req.session.user.id;
@@ -134,7 +140,7 @@ router.post('/', isAuthenticated, hasPermission('roles:manage'), async (req, res
             action: 'create_role',
             target_type: 'role',
             target_id: role_name,
-            details: JSON.stringify({ role_name }),
+            details: JSON.stringify({ role_name, requires_brands, requires_locations }),
             ip_address: req.session.ip_address,
             user_agent: req.session.user_agent
         });
@@ -143,6 +149,41 @@ router.post('/', isAuthenticated, hasPermission('roles:manage'), async (req, res
     } catch (error) {
         console.error('Create role error:', error);
         res.status(500).json({ message: 'Rol yaratishda xatolik' });
+    }
+});
+
+// Update role requirements
+router.put('/:role_name/requirements', isAuthenticated, hasPermission('roles:manage'), async (req, res) => {
+    const { role_name } = req.params;
+    const { requires_brands, requires_locations } = req.body;
+    
+    try {
+        const role = await db('roles').where('role_name', role_name).first();
+        if (!role) {
+            return res.status(404).json({ message: 'Rol topilmadi' });
+        }
+        
+        await db('roles').where('role_name', role_name).update({
+            requires_brands: Boolean(requires_brands),
+            requires_locations: Boolean(requires_locations)
+        });
+        
+        // Log to audit
+        const adminId = req.session.user.id;
+        await db('audit_logs').insert({
+            user_id: adminId,
+            action: 'update_role_requirements',
+            target_type: 'role',
+            target_id: role_name,
+            details: JSON.stringify({ requires_brands, requires_locations }),
+            ip_address: req.session.ip_address,
+            user_agent: req.session.user_agent
+        });
+        
+        res.json({ message: 'Rol talablari yangilandi' });
+    } catch (error) {
+        console.error('Update role requirements error:', error);
+        res.status(500).json({ message: 'Rol talablarini yangilashda xatolik' });
     }
 });
 
