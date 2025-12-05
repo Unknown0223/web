@@ -146,6 +146,22 @@ const initializeDB = async () => {
         console.log("Boshlang'ich super admin yaratildi. Login: 'superadmin', Parol: 'superadmin123'");
     }
     
+    // Telegram sozlamalarini tekshirish va qo'yish (agar mavjud bo'lmasa)
+    const telegramSettings = [
+        { key: 'telegram_bot_token', value: '8448375034:AAE4az26SqxDP4CFbW0hkTGfc8zkL-zm5ig' },
+        { key: 'telegram_bot_username', value: 'kassa_opertor_bot' },
+        { key: 'telegram_admin_chat_id', value: '5988510278' },
+        { key: 'telegram_group_id', value: '-4521600300' }
+    ];
+    
+    for (const setting of telegramSettings) {
+        const existing = await db('settings').where({ key: setting.key }).first();
+        if (!existing) {
+            await db('settings').insert(setting);
+            console.log(`✅ Telegram sozlamasi qo'shildi: ${setting.key}`);
+        }
+    }
+    
     console.log('Boshlang\'ich ma\'lumotlar (seeds) tekshirildi va qo\'shildi.');
 };
 
