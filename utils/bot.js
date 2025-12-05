@@ -562,14 +562,22 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             console.log(`🤖 [BOT] /start handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
             if (code && code.startsWith('subscribe_')) {
-            const newUserId = code.split('_')[1];
-            console.log(`🔗 [BOT] Subscribe so'rovi. User ID: ${newUserId}, Chat ID: ${chatId}`);
+            const newUserIdStr = code.split('_')[1];
+            const newUserId = parseInt(newUserIdStr, 10);
+            
+            console.log(`🔗 [BOT] Subscribe so'rovi. Code: ${code}, User ID (string): ${newUserIdStr}, User ID (int): ${newUserId}, Chat ID: ${chatId}`);
+            
+            if (isNaN(newUserId) || newUserId <= 0) {
+                console.error(`❌ [BOT] Noto'g'ri User ID: ${newUserIdStr}`);
+                await safeSendMessage(chatId, `❌ Noto'g'ri so'rov formati. Iltimos, ro'yxatdan o'tishni qaytadan boshlang.`);
+                return;
+            }
             
             try {
                 const existingUserWithTg = await db('users').where({ telegram_chat_id: chatId }).first();
 
                 if (existingUserWithTg) {
-                    if (String(existingUserWithTg.id) !== String(newUserId)) {
+                    if (existingUserWithTg.id !== newUserId) {
                         if (existingUserWithTg.status === 'active') {
                             await safeSendMessage(chatId, `❌ <b>Xatolik:</b> Sizning Telegram profilingiz allaqachon tizimdagi boshqa <b>aktiv akkauntga</b> bog'langan. Yangi akkaunt ochish uchun boshqa Telegram profildan foydalaning.`);
                             return;
@@ -579,16 +587,24 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             return;
                         }
                         
-                        console.log(`Eski, keraksiz foydalanuvchi yozuvi (ID: ${existingUserWithTg.id}) tozalanmoqda...`);
+                        console.log(`🗑️ [BOT] Eski, keraksiz foydalanuvchi yozuvi (ID: ${existingUserWithTg.id}) tozalanmoqda...`);
                         await db('users').where({ id: existingUserWithTg.id }).del();
                     }
                 }
 
+                console.log(`🔍 [BOT] Bazadan foydalanuvchini qidiryapman. User ID: ${newUserId} (type: ${typeof newUserId})`);
                 const user = await db('users').where({ id: newUserId }).first();
+                
                 if (!user) {
+                    console.error(`❌ [BOT] Foydalanuvchi topilmadi! User ID: ${newUserId}`);
+                    console.error(`🔍 [BOT] Bazada mavjud foydalanuvchilar (birinchi 5 ta):`);
+                    const allUsers = await db('users').select('id', 'username', 'status').limit(5);
+                    console.error(`   ${JSON.stringify(allUsers, null, 2)}`);
                     await safeSendMessage(chatId, `❌ Noma'lum yoki eskirgan so'rov. Iltimos, ro'yxatdan o'tishni qaytadan boshlang.`);
                     return;
                 }
+                
+                console.log(`✅ [BOT] Foydalanuvchi topildi: ID=${user.id}, Username=${user.username}, Status=${user.status}`);
 
                 if (user.status !== 'pending_telegram_subscription') {
                     await safeSendMessage(chatId, `✅ Siz allaqachon obuna bo'lgansiz yoki so'rovingiz ko'rib chiqilmoqda.`);
@@ -634,28 +650,28 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             // Agar hech qanday kod bo'lmasa, oddiy /start komandasi
             // Super admin yoki admin bo'lsa, chat ID'ni avtomatik saqlash
             try {
-                const user = await db('users').where({ telegram_chat_id: chatId }).first();
-                if (user && (user.role === 'super_admin' || user.role === 'admin')) {
-                    // Admin chat ID'ni tekshirish va saqlash
-                    const adminChatIdSetting = await db('settings').where({ key: 'telegram_admin_chat_id' }).first();
-                    if (!adminChatIdSetting || !adminChatIdSetting.value) {
-                        await db('settings')
-                            .insert({ key: 'telegram_admin_chat_id', value: String(chatId) })
-                            .onConflict('key')
-                            .merge();
-                        console.log(`✅ [BOT] Admin chat ID avtomatik saqlandi. Chat ID: ${chatId}, User: ${user.username}`);
-                        await safeSendMessage(chatId, `✅ <b>Salom, ${escapeHtml(user.fullname || user.username)}!</b>\n\nSizning Chat ID'ingiz avtomatik saqlandi. Endi sizga yangi foydalanuvchi so'rovlari yuboriladi.`);
-                    } else {
-                        await safeSendMessage(chatId, `Salom! Bu hisobot tizimining rasmiy boti.`);
-                    }
+            const user = await db('users').where({ telegram_chat_id: chatId }).first();
+            if (user && (user.role === 'super_admin' || user.role === 'admin')) {
+                // Admin chat ID'ni tekshirish va saqlash
+                const adminChatIdSetting = await db('settings').where({ key: 'telegram_admin_chat_id' }).first();
+                if (!adminChatIdSetting || !adminChatIdSetting.value) {
+                    await db('settings')
+                        .insert({ key: 'telegram_admin_chat_id', value: String(chatId) })
+                        .onConflict('key')
+                        .merge();
+                    console.log(`✅ [BOT] Admin chat ID avtomatik saqlandi. Chat ID: ${chatId}, User: ${user.username}`);
+                    await safeSendMessage(chatId, `✅ <b>Salom, ${escapeHtml(user.fullname || user.username)}!</b>\n\nSizning Chat ID'ingiz avtomatik saqlandi. Endi sizga yangi foydalanuvchi so'rovlari yuboriladi.`);
                 } else {
                     await safeSendMessage(chatId, `Salom! Bu hisobot tizimining rasmiy boti.`);
+                }
+            } else {
+                await safeSendMessage(chatId, `Salom! Bu hisobot tizimining rasmiy boti.`);
                 }
             } catch (error) {
                 console.error(`❌ [BOT] Else blokida xatolik:`, error);
                 await safeSendMessage(chatId, `❌ Tizimda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`);
             }
-        }
+            }
         } catch (error) {
             console.error(`❌ [BOT] /start handler'da xatolik:`, error);
             console.error(`❌ [BOT] Error stack:`, error.stack);

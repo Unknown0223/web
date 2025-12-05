@@ -61,7 +61,7 @@ router.post('/register', async (req, res) => {
         ]);
 
         // Foydalanuvchini bazaga qo'shish
-        const [userId] = await db('users').insert({
+        const insertResult = await db('users').insert({
             username: username,
             password: hashedPassword,
             secret_word: hashedSecretWord,
@@ -70,7 +70,19 @@ router.post('/register', async (req, res) => {
             role: 'pending'
         });
         
-        console.log(`✅ [REGISTER] Foydalanuvchi yaratildi. User ID: ${userId}, Status: pending_telegram_subscription`);
+        // SQLite'da insert qilganda ID qaytariladi
+        const userId = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+        
+        console.log(`✅ [REGISTER] Foydalanuvchi yaratildi. User ID: ${userId} (type: ${typeof userId}), Status: pending_telegram_subscription`);
+        console.log(`🔍 [REGISTER] Insert result: ${JSON.stringify(insertResult)}`);
+        
+        // Tekshirish: foydalanuvchi haqiqatan yaratildimi?
+        const createdUser = await db('users').where({ id: userId }).first();
+        if (!createdUser) {
+            console.error(`❌ [REGISTER] XATOLIK: Foydalanuvchi yaratildi, lekin bazadan topilmadi! User ID: ${userId}`);
+            return res.status(500).json({ message: "Foydalanuvchi yaratishda xatolik yuz berdi." });
+        }
+        console.log(`✅ [REGISTER] Tekshiruv: Foydalanuvchi bazada mavjud. ID: ${createdUser.id}, Username: ${createdUser.username}, Status: ${createdUser.status}`);
         
         // Asl parolni vaqtinchalik saqlash
         await db('pending_registrations').insert({
