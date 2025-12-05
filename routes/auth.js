@@ -47,8 +47,11 @@ router.post('/register', async (req, res) => {
     }
 
     try {
+        console.log(`📝 [REGISTER] Ro'yxatdan o'tish so'rovi. Username: ${username}, Fullname: ${fullname}`);
+        
         const existingUser = await db('users').where({ username: username }).first();
         if (existingUser) {
+            console.log(`❌ [REGISTER] Username allaqachon mavjud: ${username}`);
             return res.status(409).json({ message: "Bu nomdagi foydalanuvchi allaqachon mavjud." });
         }
 
@@ -67,25 +70,33 @@ router.post('/register', async (req, res) => {
             role: 'pending'
         });
         
+        console.log(`✅ [REGISTER] Foydalanuvchi yaratildi. User ID: ${userId}, Status: pending_telegram_subscription`);
+        
         // Asl parolni vaqtinchalik saqlash
         await db('pending_registrations').insert({
             user_id: userId,
             user_data: JSON.stringify({ password, secret_word }), // ASL PAROL VA MAXFIY SO'Z
             expires_at: new Date(Date.now() + 15 * 60 * 1000) // 15 daqiqa
         });
+        
+        console.log(`💾 [REGISTER] Vaqtinchalik ma'lumotlar saqlandi. User ID: ${userId}`);
 
         const botUsernameSetting = await db('settings').where({ key: 'telegram_bot_username' }).first();
         const botUsername = botUsernameSetting ? botUsernameSetting.value : null;
 
         if (!botUsername) {
+            console.log(`⚠️ [REGISTER] Bot username topilmadi. Status: pending_approval ga o'zgartirildi`);
             await db('users').where({ id: userId }).update({ status: 'pending_approval' });
             
+            console.log(`📤 [REGISTER] Admin'ga yangi foydalanuvchi so'rovi yuborilmoqda...`);
             await sendToTelegram({
                 type: 'new_user_request',
                 user_id: userId,
                 username: username,
                 fullname: fullname
             });
+            console.log(`✅ [REGISTER] Admin'ga so'rov yuborildi. User ID: ${userId}`);
+            
             return res.status(201).json({ 
                 status: 'pending_approval',
                 message: "So'rovingiz qabul qilindi. Administrator tasdiqlashini kuting." 
@@ -93,6 +104,7 @@ router.post('/register', async (req, res) => {
         }
 
         const connectLink = `https://t.me/${botUsername}?start=subscribe_${userId}`;
+        console.log(`🔗 [REGISTER] Bot obuna havolasi yaratildi. Link: ${connectLink}, User ID: ${userId}`);
 
         res.status(201   ).json({
             status: 'subscription_required',

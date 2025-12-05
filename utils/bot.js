@@ -324,11 +324,14 @@ async function handleSecurityRequest(payload) {
             break;
             
         case 'new_user_request':
+            console.log(`🔔 [TELEGRAM] Yangi foydalanuvchi so'rovi (bot sozlanmagan). User ID: ${user_id}, Admin Chat ID: ${admin_chat_id}`);
             text = `🔔 *${escapeMarkdownV2("Yangi Foydalanuvchi So'rovi (Bot sozlanmagan)!")}* \n\n${escapeMarkdownV2("Tizimda yangi foydalanuvchi ro'yxatdan o'tdi, lekin bot sozlanmaganligi sababli obuna bo'la olmadi. Iltimos, admin panel orqali so'rovni tasdiqlang yoki rad eting.")} \n\n👤 *${escapeMarkdownV2("To'liq ism:")}* ${escapeMarkdownV2(fullname)}\n🔑 *${escapeMarkdownV2("Login:")}* \`${escapeMarkdownV2(username)}\``;
             await sendMarkdownV2Message(admin_chat_id, text);
+            console.log(`✅ [TELEGRAM] Yangi foydalanuvchi so'rovi admin'ga yuborildi. User ID: ${user_id}`);
             break;
 
         case 'new_user_approval':
+            console.log(`🔔 [TELEGRAM] Yangi foydalanuvchi tasdiqlash so'rovi. User ID: ${user_id}, Admin Chat ID: ${admin_chat_id}`);
             text = `🔔 *${escapeMarkdownV2("Yangi Foydalanuvchi So'rovi!")}* \n\n${escapeMarkdownV2("Foydalanuvchi botga obuna bo'ldi va tasdiqlashingizni kutmoqda.")} \n\n👤 *${escapeMarkdownV2("To'liq ism:")}* ${escapeMarkdownV2(fullname)}\n🔑 *${escapeMarkdownV2("Login:")}* \`${escapeMarkdownV2(username)}\`\n\n${escapeMarkdownV2("Iltimos, so'rovni tasdiqlang yoki rad eting.")}`;
             keyboard = {
                 inline_keyboard: [
@@ -336,9 +339,11 @@ async function handleSecurityRequest(payload) {
                 ]
             };
             await sendMarkdownV2Message(admin_chat_id, text, { reply_markup: keyboard });
+            console.log(`✅ [TELEGRAM] Tasdiqlash so'rovi admin'ga yuborildi. User ID: ${user_id}`);
             break;
 
         case 'user_approved_credentials':
+            console.log(`🎉 [TELEGRAM] Foydalanuvchi tasdiqlandi va kirish ma'lumotlari yuborilmoqda. User ID: ${user_id}, Chat ID: ${chat_id}`);
             text = `🎉 *${escapeMarkdownV2("Tabriklaymiz, " + fullname)}*\\! \n\n${escapeMarkdownV2("Sizning hisobot tizimidagi akkauntingiz tasdiqlandi.")} \n\n${escapeMarkdownV2("Quyidagi ma'lumotlar orqali tizimga kirishingiz mumkin. Ushbu xabar tizimga birinchi marta kirganingizdan so'ng ")}*${escapeMarkdownV2("avtomatik o'chib ketadi")}*${escapeMarkdownV2(".")} \n\n${escapeMarkdownV2("—".repeat(25))}\n\n*${escapeMarkdownV2("Login:")}* \`${escapeMarkdownV2(username)}\`\n*${escapeMarkdownV2("Parol:")}* \`${escapeMarkdownV2(password)}\`\n*${escapeMarkdownV2("Maxfiy so'z:")}* \`${escapeMarkdownV2(secret_word)}\`\n\n${escapeMarkdownV2("—".repeat(25))}\n\n⚠️ *${escapeMarkdownV2("Diqqat!")}* ${escapeMarkdownV2("Bu ma'lumotlarni hech kimga bermang.")}`;
             const sentMessage = await sendMarkdownV2Message(chat_id, text, {
                 disable_web_page_preview: true,
@@ -346,6 +351,9 @@ async function handleSecurityRequest(payload) {
             });
             if (sentMessage) {
                 await db('users').where({ id: user_id }).update({ creds_message_id: sentMessage.message_id });
+                console.log(`✅ [TELEGRAM] Kirish ma'lumotlari yuborildi. User ID: ${user_id}, Message ID: ${sentMessage.message_id}`);
+            } else {
+                console.error(`❌ [TELEGRAM] Kirish ma'lumotlarini yuborib bo'lmadi. User ID: ${user_id}, Chat ID: ${chat_id}`);
             }
             break;
         
@@ -367,7 +375,7 @@ async function handleSecurityRequest(payload) {
 async function sendToTelegram(payload) {
     try {
         const { type } = payload;
-        console.log(`📤 [TELEGRAM] sendToTelegram chaqirildi. Type: ${type}`);
+        console.log(`📤 [TELEGRAM] sendToTelegram chaqirildi. Type: ${type}, Payload:`, JSON.stringify(payload, null, 2));
 
         if (type === 'new' || type === 'edit') {
             const groupIdSetting = await db('settings').where({ key: 'telegram_group_id' }).first();
@@ -412,8 +420,10 @@ async function sendToTelegram(payload) {
                 const adminChatIdSetting = await db('settings').where({ key: 'telegram_admin_chat_id' }).first();
                 const adminChatId = adminChatIdSetting ? adminChatIdSetting.value : null;
                 
+                console.log(`👤 [TELEGRAM] Admin chat ID tekshiruvi. Type: ${type}, Admin Chat ID: ${adminChatId}`);
+                
                 if (!adminChatId) {
-                    console.error("Admin chat ID topilmadi. Xavfsizlik xabari yuborilmadi.");
+                    console.error(`❌ [TELEGRAM] Admin chat ID topilmadi. Type: ${type}, Xabarni yuborib bo'lmaydi.`);
                     if (type !== 'new_user_approval' && type !== 'new_user_request') {
                         return;
                     }
@@ -421,7 +431,9 @@ async function sendToTelegram(payload) {
                 payload.admin_chat_id = adminChatId;
             }
             
+            console.log(`🔄 [TELEGRAM] handleSecurityRequest chaqirilmoqda. Type: ${type}`);
             await handleSecurityRequest(payload);
+            console.log(`✅ [TELEGRAM] handleSecurityRequest yakunlandi. Type: ${type}`);
         }
 
     } catch (error) {
@@ -572,12 +584,15 @@ const initializeBot = async (botToken, options = { polling: true }) => {
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         const text = msg.text;
+        
+        console.log(`💬 [BOT] Xabar qabul qilindi. Chat ID: ${chatId}, Text: ${text?.substring(0, 50) || 'yo\'q'}`);
 
         if (!text || text.startsWith('/')) return;
 
         const state = userStates[chatId];
         if (state && state.state === 'awaiting_secret_word') {
             const { user_id } = state;
+            console.log(`🔐 [BOT] Secret word kutilmoqda. User ID: ${user_id}, Chat ID: ${chatId}`);
             try {
                 const response = await fetch(new URL('api/telegram/verify-secret-word', NODE_SERVER_URL).href, {
                     method: 'POST',
@@ -587,19 +602,24 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 const result = await response.json();
 
                 if (result.status === 'success') {
+                    console.log(`✅ [BOT] Secret word to'g'ri. Magic link yuborilmoqda. User ID: ${user_id}`);
                     const magicLink = new URL(path.join('api/verify-session/', result.magic_token), NODE_SERVER_URL).href;
                     const messageText = `Salom, <b>${escapeHtml(msg.from.username)}</b>! \n\nYangi qurilmadan kirishni tasdiqlash uchun quyidagi tugmani bosing. Bu havola 5 daqiqa amal qiladi.`;
                     const keyboard = { inline_keyboard: [[{ text: "✅ Yangi Qurilmada Kirish", url: magicLink }]] };
                     await safeSendMessage(chatId, messageText, { reply_markup: keyboard });
                     delete userStates[chatId];
+                    console.log(`✅ [BOT] Magic link yuborildi. User ID: ${user_id}`);
                 } else if (result.status === 'locked') {
+                    console.log(`🔒 [BOT] Secret word urinishlari bloklandi. User ID: ${user_id}`);
                     await safeSendMessage(chatId, "Xavfsizlik qoidasi buzildi. Kirishga urinish bloklandi. Administrator bilan bog'laning.");
                     delete userStates[chatId];
                 } else {
                     state.attempts_left--;
+                    console.log(`⚠️ [BOT] Secret word noto'g'ri. Qolgan urinishlar: ${state.attempts_left}, User ID: ${user_id}`);
                     if (state.attempts_left > 0) {
                         await safeSendMessage(chatId, `Maxfiy so'z noto'g'ri. Qayta urinib ko'ring. (Qolgan urinishlar: ${state.attempts_left})`);
                     } else {
+                        console.log(`🔒 [BOT] Secret word urinishlari tugadi. Admin'ga xabar yuborilmoqda. User ID: ${user_id}`);
                         await safeSendMessage(chatId, "Urinishlar soni tugadi. Jarayon bloklandi.");
                         fetch(new URL('api/telegram/notify-admin-lock', NODE_SERVER_URL).href, {
                             method: 'POST',
@@ -619,6 +639,8 @@ const initializeBot = async (botToken, options = { polling: true }) => {
     bot.on('callback_query', async (query) => {
         const adminChatId = query.message.chat.id;
         const { data, message } = query;
+        
+        console.log(`🔘 [BOT] Callback query qabul qilindi. Chat ID: ${adminChatId}, Data: ${data}`);
         
         const originalText = message.text;
         
@@ -752,10 +774,13 @@ const initializeBot = async (botToken, options = { polling: true }) => {
         const userId = parseInt(parts[1], 10);
 
         if (action === 'approve') {
+            console.log(`✅ [BOT] Foydalanuvchi tasdiqlash so'rovi. User ID: ${userId}`);
             try {
                 const updated = await db('users')
                     .where({ id: userId, status: 'pending_approval' })
                     .update({ status: 'status_in_process' });
+                
+                console.log(`🔄 [BOT] Foydalanuvchi statusi yangilandi. User ID: ${userId}, Updated: ${updated}`);
 
                                 if (updated === 0) {
                     await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Bu so'rov allaqachon ko'rib chiqilgan yoki bekor qilingan.`, {
@@ -787,6 +812,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             }
 
         } else if (action === 'reject') {
+            console.log(`❌ [BOT] Foydalanuvchi so'rovi rad etildi. User ID: ${userId}`);
             await db('users').where({ id: userId }).update({ status: 'archived' });
             await bot.editMessageText(originalText + `\n\n❌ <b>So'rov rad etildi va foydalanuvchi arxivlandi.</b>`, {
                 chat_id: adminChatId,
@@ -794,6 +820,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 parse_mode: 'HTML',
                 reply_markup: {}
             });
+            console.log(`✅ [BOT] Foydalanuvchi arxivlandi. User ID: ${userId}`);
         } else if (action === 'restore') {
             const newUserId = parseInt(parts[2], 10);
             await db('users').where({ id: userId }).update({ status: 'active' });
