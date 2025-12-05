@@ -94,8 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (typeof stringSimilarity !== 'undefined') {
-            const similarity = stringSimilarity.compareTwoStrings(passwordInput.value, secretWordInput.value.trim());
+        // String similarity tekshiruvi
+        if (typeof window.stringSimilarity !== 'undefined' && window.stringSimilarity.compareTwoStrings) {
+            const similarity = window.stringSimilarity.compareTwoStrings(passwordInput.value, secretWordInput.value.trim());
             if (similarity > 0.4) {
                 showMessage(`Maxfiy so'z parolga juda o'xshash (${(similarity * 100).toFixed(0)}%). Boshqa so'z kiriting.`, 'error');
                 secretWordInput.focus();
