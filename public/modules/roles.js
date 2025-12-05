@@ -572,7 +572,7 @@ async function createNewRole() {
     
     // state.roles mavjudligini tekshirish
     if (!state.roles || !Array.isArray(state.roles)) {
-        console.warn('[ROLES] state.roles mavjud emas yoki array emas, validatsiya o'tkazib yuborildi');
+        console.warn('[ROLES] state.roles mavjud emas yoki array emas, validatsiya o\'tkazib yuborildi');
     } else if (state.roles.some(r => r.role_name === roleName)) {
         showToast('Bu rol allaqachon mavjud!', 'error');
         input.focus();
