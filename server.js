@@ -78,15 +78,25 @@ const { initializeBot, getBot } = require('./utils/bot.js');
 const axios = require('axios');
 
 // --- WEBHOOK UCHUN ENDPOINT ---
-app.post('/telegram-webhook/:token', (req, res) => {
-    const bot = getBot();
-    const secretToken = req.params.token;
+app.post('/telegram-webhook/:token', async (req, res) => {
+    try {
+        const bot = getBot();
+        const secretToken = req.params.token;
 
-    if (bot && bot.token === secretToken) {
-        bot.processUpdate(req.body);
-        res.sendStatus(200);
-    } else {
-        res.sendStatus(403);
+        // Bot token'ni bazadan tekshirish
+        const tokenSetting = await db('settings').where({ key: 'telegram_bot_token' }).first();
+        const botToken = tokenSetting ? tokenSetting.value : null;
+
+        if (bot && botToken && secretToken === botToken) {
+            bot.processUpdate(req.body);
+            res.sendStatus(200);
+        } else {
+            console.warn(`⚠️ Webhook so'rovi rad etildi. Bot: ${!!bot}, Token match: ${botToken === secretToken}`);
+            res.sendStatus(403);
+        }
+    } catch (error) {
+        console.error('Webhook endpoint xatoligi:', error);
+        res.sendStatus(500);
     }
 });
 
