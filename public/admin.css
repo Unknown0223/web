@@ -11250,3 +11250,22 @@ tr:hover .quick-actions {
         min-width: 100%;
     }
 }
+
+/* Import Tables Modal - Footer scroll tashqarisida qolishi uchun */
+#import-tables-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+}
+
+#import-tables-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: none;
+}
+
+#import-tables-modal .modal-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+}
