@@ -28,6 +28,112 @@ function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+// Filiallar tugmalarini yaratish (grid formatida)
+function createLocationButtons(locations, selectedLocations = []) {
+    const buttons = [];
+    const isSelected = (loc) => selectedLocations.includes(loc);
+    
+    if (locations.length <= 5) {
+        // 5 tagacha - list formatida
+        return locations.map(loc => ([{ 
+            text: `${isSelected(loc) ? '✔️ ' : ''}${escapeHtml(loc)}`, 
+            callback_data: `loc_${loc}` 
+        }]));
+    } else if (locations.length <= 8) {
+        // 8 tagacha - grid 2 ustunli
+        for (let i = 0; i < locations.length; i += 2) {
+            const row = [];
+            row.push({ 
+                text: `${isSelected(locations[i]) ? '✔️ ' : ''}${escapeHtml(locations[i])}`, 
+                callback_data: `loc_${locations[i]}` 
+            });
+            if (i + 1 < locations.length) {
+                row.push({ 
+                    text: `${isSelected(locations[i + 1]) ? '✔️ ' : ''}${escapeHtml(locations[i + 1])}`, 
+                    callback_data: `loc_${locations[i + 1]}` 
+                });
+            }
+            buttons.push(row);
+        }
+    } else {
+        // Undan oshiq - grid 3 ustunli
+        for (let i = 0; i < locations.length; i += 3) {
+            const row = [];
+            row.push({ 
+                text: `${isSelected(locations[i]) ? '✔️ ' : ''}${escapeHtml(locations[i])}`, 
+                callback_data: `loc_${locations[i]}` 
+            });
+            if (i + 1 < locations.length) {
+                row.push({ 
+                    text: `${isSelected(locations[i + 1]) ? '✔️ ' : ''}${escapeHtml(locations[i + 1])}`, 
+                    callback_data: `loc_${locations[i + 1]}` 
+                });
+            }
+            if (i + 2 < locations.length) {
+                row.push({ 
+                    text: `${isSelected(locations[i + 2]) ? '✔️ ' : ''}${escapeHtml(locations[i + 2])}`, 
+                    callback_data: `loc_${locations[i + 2]}` 
+                });
+            }
+            buttons.push(row);
+        }
+    }
+    return buttons;
+}
+
+// Brendlar tugmalarini yaratish (grid formatida)
+function createBrandButtons(brands, selectedBrands = []) {
+    const buttons = [];
+    const isSelected = (brandId) => selectedBrands.includes(brandId);
+    
+    if (brands.length <= 5) {
+        // 5 tagacha - list formatida
+        return brands.map(brand => ([{ 
+            text: `${isSelected(brand.id) ? '✔️ ' : ''}${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`,
+            callback_data: `brand_${brand.id}` 
+        }]));
+    } else if (brands.length <= 8) {
+        // 8 tagacha - grid 2 ustunli
+        for (let i = 0; i < brands.length; i += 2) {
+            const row = [];
+            row.push({ 
+                text: `${isSelected(brands[i].id) ? '✔️ ' : ''}${brands[i].emoji || '🏷️'} ${escapeHtml(brands[i].name)}`,
+                callback_data: `brand_${brands[i].id}` 
+            });
+            if (i + 1 < brands.length) {
+                row.push({ 
+                    text: `${isSelected(brands[i + 1].id) ? '✔️ ' : ''}${brands[i + 1].emoji || '🏷️'} ${escapeHtml(brands[i + 1].name)}`,
+                    callback_data: `brand_${brands[i + 1].id}` 
+                });
+            }
+            buttons.push(row);
+        }
+    } else {
+        // Undan oshiq - grid 3 ustunli
+        for (let i = 0; i < brands.length; i += 3) {
+            const row = [];
+            row.push({ 
+                text: `${isSelected(brands[i].id) ? '✔️ ' : ''}${brands[i].emoji || '🏷️'} ${escapeHtml(brands[i].name)}`,
+                callback_data: `brand_${brands[i].id}` 
+            });
+            if (i + 1 < brands.length) {
+                row.push({ 
+                    text: `${isSelected(brands[i + 1].id) ? '✔️ ' : ''}${brands[i + 1].emoji || '🏷️'} ${escapeHtml(brands[i + 1].name)}`,
+                    callback_data: `brand_${brands[i + 1].id}` 
+                });
+            }
+            if (i + 2 < brands.length) {
+                row.push({ 
+                    text: `${isSelected(brands[i + 2].id) ? '✔️ ' : ''}${brands[i + 2].emoji || '🏷️'} ${escapeHtml(brands[i + 2].name)}`,
+                    callback_data: `brand_${brands[i + 2].id}` 
+                });
+            }
+            buttons.push(row);
+        }
+    }
+    return buttons;
+}
+
 async function safeSendMessage(chatId, text, options = {}) {
     console.log(`🔐 [TELEGRAM] safeSendMessage chaqirildi. Chat ID: ${chatId}, Bot initialized: ${botIsInitialized}, Bot exists: ${!!bot}`);
     
@@ -558,89 +664,78 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             const chatId = msg.chat.id;
             const code = match[1];
             
-            console.log(`🤖 [BOT] ========== /START HANDLER BOSHLANDI ==========`);
             console.log(`🤖 [BOT] /start komandasi qabul qilindi. Chat ID: ${chatId}, Code: ${code || 'yo\'q'}`);
-            console.log(`🤖 [BOT] /start handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
             if (code && code.startsWith('subscribe_')) {
-                console.log(`🔗 [BOT] Subscribe kod topildi: ${code}`);
                 const newUserIdStr = code.split('_')[1];
                 const newUserId = parseInt(newUserIdStr, 10);
                 
                 console.log(`🔗 [BOT] Subscribe so'rovi. Code: ${code}, User ID (string): ${newUserIdStr}, User ID (int): ${newUserId}, Chat ID: ${chatId}`);
             
-            if (isNaN(newUserId) || newUserId <= 0) {
-                console.error(`❌ [BOT] Noto'g'ri User ID: ${newUserIdStr}`);
-                await safeSendMessage(chatId, `❌ Noto'g'ri so'rov formati. Iltimos, ro'yxatdan o'tishni qaytadan boshlang.`);
-                return;
-            }
-            
-            try {
-                const existingUserWithTg = await db('users').where({ telegram_chat_id: chatId }).first();
+                if (isNaN(newUserId) || newUserId <= 0) {
+                    console.error(`❌ [BOT] Noto'g'ri User ID: ${newUserIdStr}`);
+                    await safeSendMessage(chatId, `❌ Noto'g'ri so'rov formati. Iltimos, ro'yxatdan o'tishni qaytadan boshlang.`);
+                    return;
+                }
+                
+                try {
+                    const existingUserWithTg = await db('users').where({ telegram_chat_id: chatId }).first();
 
-                if (existingUserWithTg) {
-                    if (existingUserWithTg.id !== newUserId) {
-                        if (existingUserWithTg.status === 'active') {
-                            await safeSendMessage(chatId, `❌ <b>Xatolik:</b> Sizning Telegram profilingiz allaqachon tizimdagi boshqa <b>aktiv akkauntga</b> bog'langan. Yangi akkaunt ochish uchun boshqa Telegram profildan foydalaning.`);
-                            return;
+                    if (existingUserWithTg) {
+                        if (existingUserWithTg.id !== newUserId) {
+                            if (existingUserWithTg.status === 'active') {
+                                await safeSendMessage(chatId, `❌ <b>Xatolik:</b> Sizning Telegram profilingiz allaqachon tizimdagi boshqa <b>aktiv akkauntga</b> bog'langan. Yangi akkaunt ochish uchun boshqa Telegram profildan foydalaning.`);
+                                return;
+                            }
+                            if (existingUserWithTg.status === 'blocked') {
+                                await safeSendMessage(chatId, `❌ <b>Xatolik:</b> Sizning Telegram profilingiz tizimda <b>bloklangan</b> akkauntga bog'langan. Iltimos, administratorga murojaat qiling.`);
+                                return;
+                            }
+                            
+                            console.log(`🗑️ [BOT] Eski, keraksiz foydalanuvchi yozuvi (ID: ${existingUserWithTg.id}) tozalanmoqda...`);
+                            await db('users').where({ id: existingUserWithTg.id }).del();
                         }
-                        if (existingUserWithTg.status === 'blocked') {
-                            await safeSendMessage(chatId, `❌ <b>Xatolik:</b> Sizning Telegram profilingiz tizimda <b>bloklangan</b> akkauntga bog'langan. Iltimos, administratorga murojaat qiling.`);
-                            return;
-                        }
-                        
-                        console.log(`🗑️ [BOT] Eski, keraksiz foydalanuvchi yozuvi (ID: ${existingUserWithTg.id}) tozalanmoqda...`);
-                        await db('users').where({ id: existingUserWithTg.id }).del();
                     }
-                }
 
-                console.log(`🔍 [BOT] Bazadan foydalanuvchini qidiryapman. User ID: ${newUserId} (type: ${typeof newUserId})`);
-                const user = await db('users').where({ id: newUserId }).first();
-                console.log(`🔍 [BOT] Database query natijasi:`, user ? `Topildi (ID: ${user.id})` : 'Topilmadi');
-                
-                if (!user) {
-                    console.error(`❌ [BOT] Foydalanuvchi topilmadi! User ID: ${newUserId}`);
-                    console.error(`🔍 [BOT] Bazada mavjud foydalanuvchilar (birinchi 5 ta):`);
-                    const allUsers = await db('users').select('id', 'username', 'status').limit(5);
-                    console.error(`   ${JSON.stringify(allUsers, null, 2)}`);
-                    await safeSendMessage(chatId, `❌ Noma'lum yoki eskirgan so'rov. Iltimos, ro'yxatdan o'tishni qaytadan boshlang.`);
-                    return;
-                }
-                
-                console.log(`✅ [BOT] Foydalanuvchi topildi: ID=${user.id}, Username=${user.username}, Status=${user.status}`);
+                    console.log(`🔍 [BOT] Bazadan foydalanuvchini qidiryapman. User ID: ${newUserId} (type: ${typeof newUserId})`);
+                    const user = await db('users').where({ id: newUserId }).first();
+                    
+                    if (!user) {
+                        console.error(`❌ [BOT] Foydalanuvchi topilmadi! User ID: ${newUserId}`);
+                        console.error(`🔍 [BOT] Bazada mavjud foydalanuvchilar (birinchi 5 ta):`);
+                        const allUsers = await db('users').select('id', 'username', 'status').limit(5);
+                        console.error(`   ${JSON.stringify(allUsers, null, 2)}`);
+                        await safeSendMessage(chatId, `❌ Noma'lum yoki eskirgan so'rov. Iltimos, ro'yxatdan o'tishni qaytadan boshlang.`);
+                        return;
+                    }
+                    
+                    console.log(`✅ [BOT] Foydalanuvchi topildi: ID=${user.id}, Username=${user.username}, Status=${user.status}`);
 
-                if (user.status !== 'pending_telegram_subscription') {
-                    console.log(`⚠️ [BOT] Foydalanuvchi statusi noto'g'ri. Kutilgan: pending_telegram_subscription, Hozirgi: ${user.status}`);
-                    await safeSendMessage(chatId, `✅ Siz allaqachon obuna bo'lgansiz yoki so'rovingiz ko'rib chiqilmoqda.`);
-                    return;
-                }
+                    if (user.status !== 'pending_telegram_subscription') {
+                        console.log(`⚠️ [BOT] Foydalanuvchi statusi noto'g'ri. Kutilgan: pending_telegram_subscription, Hozirgi: ${user.status}`);
+                        await safeSendMessage(chatId, `✅ Siz allaqachon obuna bo'lgansiz yoki so'rovingiz ko'rib chiqilmoqda.`);
+                        return;
+                    }
 
-                console.log(`📝 [BOT] Foydalanuvchi ma'lumotlarini yangilamoqda...`);
-                await db('users').where({ id: newUserId }).update({
-                    telegram_chat_id: chatId,
-                    telegram_username: msg.from.username,
-                    status: 'pending_approval'
-                });
-                console.log(`✅ [BOT] Foydalanuvchi ma'lumotlari yangilandi.`);
+                    await db('users').where({ id: newUserId }).update({
+                        telegram_chat_id: chatId,
+                        telegram_username: msg.from.username,
+                        status: 'pending_approval'
+                    });
 
-                console.log(`✅ [BOT] Foydalanuvchi botga ulandi. User ID: ${newUserId}, Status: pending_approval`);
-                
-                console.log(`📤 [BOT] Foydalanuvchiga javob yuborilmoqda...`);
-                await safeSendMessage(chatId, `✅ Rahmat! Siz botga muvaffaqiyatli obuna bo'ldingiz. \n\nSo'rovingiz ko'rib chiqish uchun adminga yuborildi. Tasdiqlanishini kuting.`);
-                console.log(`✅ [BOT] Foydalanuvchiga javob yuborildi.`);
+                    console.log(`✅ [BOT] Foydalanuvchi botga ulandi. User ID: ${newUserId}, Status: pending_approval`);
+                    
+                    await safeSendMessage(chatId, `✅ Rahmat! Siz botga muvaffaqiyatli obuna bo'ldingiz. \n\nSo'rovingiz ko'rib chiqish uchun adminga yuborildi. Tasdiqlanishini kuting.`);
 
-                console.log(`📤 [BOT] Admin'ga tasdiqlash so'rovi yuborilmoqda...`);
-                console.log(`📤 [BOT] sendToTelegram chaqirilmoqda. Type: new_user_approval, User ID: ${user.id}, Username: ${user.username}, Fullname: ${user.fullname}`);
-                await sendToTelegram({
-                    type: 'new_user_approval',
-                    user_id: user.id,
-                    username: user.username,
-                    fullname: user.fullname
-                });
-                console.log(`✅ [BOT] Admin'ga tasdiqlash so'rovi yuborildi.`);
-                console.log(`🤖 [BOT] ========== /START HANDLER YAKUNLANDI ==========`);
+                    await sendToTelegram({
+                        type: 'new_user_approval',
+                        user_id: user.id,
+                        username: user.username,
+                        fullname: user.fullname
+                    });
+                    console.log(`✅ [BOT] Admin'ga tasdiqlash so'rovi yuborildi.`);
 
-            } catch (error) {
+                } catch (error) {
                 console.error("Yangi foydalanuvchi obunasida xatolik:", error);
                 await safeSendMessage(chatId, "Tizimda vaqtinchalik xatolik. Iltimos, keyinroq qayta urinib ko'ring.");
             }
@@ -686,11 +781,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             }
             }
         } catch (error) {
-            console.error(`❌ [BOT] ========== /START HANDLER XATOLIK ==========`);
             console.error(`❌ [BOT] /start handler'da xatolik:`, error);
-            console.error(`❌ [BOT] Error message:`, error.message);
-            console.error(`❌ [BOT] Error stack:`, error.stack);
-            console.error(`❌ [BOT] ==========================================`);
             try {
                 await safeSendMessage(msg.chat.id, `❌ Tizimda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`);
             } catch (sendError) {
@@ -824,19 +915,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 userStates[adminChatId].brands = [];
 
                 const settings = await db('settings').where({ key: 'app_settings' }).first();
-                console.log(`🔍 [BOT] Settings olingan:`, settings ? 'mavjud' : 'yo\'q');
-                if (settings) {
-                    console.log(`🔍 [BOT] Settings value:`, settings.value);
-                    try {
-                        const parsedSettings = JSON.parse(settings.value);
-                        console.log(`🔍 [BOT] Parsed settings:`, parsedSettings);
-                        console.log(`🔍 [BOT] Locations:`, parsedSettings.locations);
-                    } catch (e) {
-                        console.error(`❌ [BOT] Settings parse xatolik:`, e);
-                    }
-                }
                 const allLocations = settings ? JSON.parse(settings.value).locations : [];
-                console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`, allLocations);
                 
                 // Rol talablariga ko'ra ketma-ketlikni aniqlash
                 // Belgilanmagan bo'lsa (null/undefined), default holatda ikkalasi ham ko'rsatiladi
@@ -847,20 +926,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     ? roleData.requires_brands 
                     : null;  // null = belgilanmagan
                 
-                console.log(`🔍 [BOT] Rol talablari tekshirilmoqda. Role: ${role}`);
-                console.log(`   - requires_locations: ${isLocationsRequired} (${typeof isLocationsRequired})`);
-                console.log(`   - requires_brands: ${isBrandsRequired} (${typeof isBrandsRequired})`);
-                
-                const requiresLocations = isLocationsRequired !== null ? isLocationsRequired : true;  // Default: true
-                const requiresBrands = isBrandsRequired !== null ? isBrandsRequired : true;  // Default: true
-                
-                // Belgilanmagan bo'lsa, skip imkoniyati bor
+                const requiresLocations = isLocationsRequired !== null ? isLocationsRequired : true;
+                const requiresBrands = isBrandsRequired !== null ? isBrandsRequired : true;
                 const canSkipLocations = isLocationsRequired === null;
                 const canSkipBrands = isBrandsRequired === null;
-                
-                console.log(`📊 [BOT] Ko'rsatish sozlamalari:`);
-                console.log(`   - Filiallar ko'rsatish: ${requiresLocations ? 'ha' : 'yo\'q'}, Skip imkoniyati: ${canSkipLocations ? 'ha' : 'yo\'q'}`);
-                console.log(`   - Brendlar ko'rsatish: ${requiresBrands ? 'ha' : 'yo\'q'}, Skip imkoniyati: ${canSkipBrands ? 'ha' : 'yo\'q'}`);
                 
                 // State'ga saqlash
                 userStates[adminChatId].canSkipLocations = canSkipLocations;
@@ -868,69 +937,12 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 userStates[adminChatId].skipLocations = false;
                 userStates[adminChatId].skipBrands = false;
                 
-                console.log(`🔍 [BOT] ========== SHART TEKSHIRILMOQDA ==========`);
-                console.log(`🔍 [BOT] Filiallar shart tekshiruvi:`);
-                console.log(`   - requiresLocations: ${requiresLocations} (${typeof requiresLocations})`);
-                console.log(`   - isLocationsRequired: ${isLocationsRequired} (${typeof isLocationsRequired})`);
-                console.log(`   - isLocationsRequired === null: ${isLocationsRequired === null}`);
-                console.log(`   - (requiresLocations || isLocationsRequired === null): ${(requiresLocations || isLocationsRequired === null)}`);
-                console.log(`   - allLocations.length: ${allLocations.length}`);
-                console.log(`   - allLocations:`, JSON.stringify(allLocations, null, 2));
-                console.log(`   - allLocations.length > 0: ${allLocations.length > 0}`);
-                console.log(`   - Umumiy shart: ${(requiresLocations || isLocationsRequired === null) && allLocations.length > 0}`);
-                console.log(`   - Shartning birinchi qismi: (requiresLocations || isLocationsRequired === null) = ${(requiresLocations || isLocationsRequired === null)}`);
-                console.log(`   - Shartning ikkinchi qismi: allLocations.length > 0 = ${allLocations.length > 0}`);
-                console.log(`   - IKKALASI BIRGA: ${(requiresLocations || isLocationsRequired === null) && allLocations.length > 0}`);
-                
                 // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan) va filiallar mavjud bo'lsa
-                // Belgilanmagan (null) bo'lsa ham, agar filiallar mavjud bo'lsa, ularni ko'rsatish kerak
-                console.log(`🔍 [BOT] ========== FILIALLAR KO'RSATISH SHARTI TEKSHIRILMOQDA ==========`);
-                console.log(`🔍 [BOT] Shart: (requiresLocations || isLocationsRequired === null) && allLocations.length > 0`);
-                console.log(`🔍 [BOT] requiresLocations: ${requiresLocations}, isLocationsRequired: ${isLocationsRequired}, allLocations.length: ${allLocations.length}`);
-                
                 if ((requiresLocations || isLocationsRequired === null) && allLocations.length > 0) {
-                    console.log(`✅ [BOT] SHART TO'G'RI - Filiallar ko'rsatiladi`);
-                    console.log(`✅ [BOT] Sabab: requiresLocations=${requiresLocations} YOKI isLocationsRequired=${isLocationsRequired} (null) VA allLocations.length=${allLocations.length} > 0`);
                     userStates[adminChatId].state = 'awaiting_locations';
                     
-                    console.log(`📍 [BOT] ========== FILIALLAR KO'RSATILMOQDA ==========`);
-                    console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`);
-                    console.log(`📍 [BOT] Filiallar ro'yxati (batafsil):`, JSON.stringify(allLocations, null, 2));
-                    console.log(`📍 [BOT] Rol sozlamalari: requires_locations=${isLocationsRequired}, requiresLocations=${requiresLocations}, canSkipLocations=${canSkipLocations}`);
-                    
                     // Filiallar ro'yxatini formatlash
-                    let locationButtons = [];
-                    
-                    if (allLocations.length <= 5) {
-                        // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                        console.log(`📋 [BOT] Filiallar list formatida ko'rsatilmoqda (${allLocations.length} ta)`);
-                        locationButtons = allLocations.map(loc => ([{ text: escapeHtml(loc), callback_data: `loc_${loc}` }]));
-                    } else if (allLocations.length <= 8) {
-                        // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                        console.log(`📋 [BOT] Filiallar 2 ustunli grid formatida ko'rsatilmoqda (${allLocations.length} ta)`);
-                        for (let i = 0; i < allLocations.length; i += 2) {
-                            const row = [];
-                            row.push({ text: escapeHtml(allLocations[i]), callback_data: `loc_${allLocations[i]}` });
-                            if (i + 1 < allLocations.length) {
-                                row.push({ text: escapeHtml(allLocations[i + 1]), callback_data: `loc_${allLocations[i + 1]}` });
-                            }
-                            locationButtons.push(row);
-                        }
-                    } else {
-                        // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                        console.log(`📋 [BOT] Filiallar 3 ustunli grid formatida ko'rsatilmoqda (${allLocations.length} ta)`);
-                        for (let i = 0; i < allLocations.length; i += 3) {
-                            const row = [];
-                            row.push({ text: escapeHtml(allLocations[i]), callback_data: `loc_${allLocations[i]}` });
-                            if (i + 1 < allLocations.length) {
-                                row.push({ text: escapeHtml(allLocations[i + 1]), callback_data: `loc_${allLocations[i + 1]}` });
-                            }
-                            if (i + 2 < allLocations.length) {
-                                row.push({ text: escapeHtml(allLocations[i + 2]), callback_data: `loc_${allLocations[i + 2]}` });
-                            }
-                            locationButtons.push(row);
-                        }
-                    }
+                    const locationButtons = createLocationButtons(allLocations);
                     
                     // "O'tkazib yuborish" tugmasi qo'shish (belgilanmagan bo'lsa)
                     const finishButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }];
@@ -947,10 +959,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         ]
                     };
                     
-                    console.log(`✅ [BOT] Filiallar keyboard yaratildi. Qatorlar soni: ${locationButtons.length}`);
-                    console.log(`✅ [BOT] Filiallar keyboard tugmalari:`, JSON.stringify(locationButtons.map(row => row.map(btn => btn.text)), null, 2));
-                    console.log(`✅ [BOT] Finish tugmalari:`, finishButtons.map(btn => btn.text));
-                    console.log(`📍 [BOT] ========== FILIALLAR KEYBOARD TAYYOR ==========`);
                     
                     const newText = originalText + `\n\n<b>Rol tanlandi:</b> <code>${role}</code>\nEndi filial(lar)ni tanlang${canSkipLocations ? ' (ixtiyoriy)' : ''}:`;
                     await bot.editMessageText(newText, {
@@ -964,20 +972,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 }
                 
                 // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan), lekin filiallar mavjud emas
-                // Belgilanmagan (null) bo'lsa, filiallar mavjud bo'lmasa ham, brendlarga o'tish kerak
-                console.log(`🔍 [BOT] ========== FILIALLAR MAVJUD EMAS HOLATI TEKSHIRILMOQDA ==========`);
-                console.log(`🔍 [BOT] Shart: (requiresLocations || isLocationsRequired === null) && allLocations.length === 0`);
-                console.log(`🔍 [BOT] requiresLocations: ${requiresLocations}, isLocationsRequired: ${isLocationsRequired}, allLocations.length: ${allLocations.length}`);
-                console.log(`🔍 [BOT] allLocations:`, JSON.stringify(allLocations, null, 2));
-                
                 if ((requiresLocations || isLocationsRequired === null) && allLocations.length === 0) {
-                    console.log(`✅ [BOT] Filiallar mavjud emas (length=${allLocations.length}), brendlarga o'tilmoqda`);
-                    console.log(`✅ [BOT] Sabab: requiresLocations=${requiresLocations} YOKI isLocationsRequired=${isLocationsRequired} (null) VA allLocations.length=${allLocations.length} === 0`);
-                    
                     // Agar brendlar ham kerak bo'lsa (belgilangan yoki belgilanmagan), avval brendlarni tanlash
-                    console.log(`🔍 [BOT] Brendlar shart tekshirilmoqda: requiresBrands=${requiresBrands}, isBrandsRequired=${isBrandsRequired}`);
                     if (requiresBrands || isBrandsRequired === null) {
-                        console.log(`✅ [BOT] Brendlar ham kerak, brendlarga o'tilmoqda`);
                         userStates[adminChatId].state = 'awaiting_brands';
                         
                         console.log(`🏷️ [BOT] Brendlarni database'dan olishga harakat qilinmoqda.`);
@@ -999,7 +996,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         if (allBrands.length === 0) {
                             console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
                         } else {
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
                         }
                         
                         if (allBrands.length === 0) {
@@ -1015,57 +1011,8 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
                             
-                            // Brendlar ro'yxatini formatlash (filiallar kabi)
-                            let brandButtons = [];
-                            
-                            if (allBrands.length <= 5) {
-                                // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                                console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                brandButtons = allBrands.map(brand => ([{ 
-                                    text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                    callback_data: `brand_${brand.id}` 
-                                }]));
-                            } else if (allBrands.length <= 8) {
-                                // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                                console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                for (let i = 0; i < allBrands.length; i += 2) {
-                                    const row = [];
-                                    row.push({ 
-                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                        callback_data: `brand_${allBrands[i].id}` 
-                                    });
-                                    if (i + 1 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 1].id}` 
-                                        });
-                                    }
-                                    brandButtons.push(row);
-                                }
-                            } else {
-                                // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                                console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                for (let i = 0; i < allBrands.length; i += 3) {
-                                    const row = [];
-                                    row.push({ 
-                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                        callback_data: `brand_${allBrands[i].id}` 
-                                    });
-                                    if (i + 1 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 1].id}` 
-                                        });
-                                    }
-                                    if (i + 2 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 2].id}` 
-                                        });
-                                    }
-                                    brandButtons.push(row);
-                                }
-                            }
+                            // Brendlar ro'yxatini formatlash
+                            const brandButtons = createBrandButtons(allBrands);
                             
                         const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                         if (canSkipBrands) {
@@ -1081,7 +1028,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             ]
                         };
                         
-                        console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
                         
                         const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nFiliallar mavjud emas.\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
@@ -1118,18 +1064,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 }
                 
                 // Agar faqat brendlar kerak bo'lsa (belgilangan yoki belgilanmagan)
-                // Belgilanmagan (null) bo'lsa ham, agar brendlar mavjud bo'lsa, ularni ko'rsatish kerak
-                console.log(`🔍 [BOT] Faqat brendlar shart tekshiruvi:`);
-                console.log(`   - requiresBrands: ${requiresBrands}`);
-                console.log(`   - isBrandsRequired: ${isBrandsRequired}`);
-                console.log(`   - isBrandsRequired === null: ${isBrandsRequired === null}`);
-                console.log(`   - (requiresBrands || isBrandsRequired === null): ${(requiresBrands || isBrandsRequired === null)}`);
-                console.log(`   - !requiresLocations: ${!requiresLocations}`);
-                console.log(`   - isLocationsRequired !== null: ${isLocationsRequired !== null}`);
-                console.log(`   - Umumiy shart: ${(requiresBrands || isBrandsRequired === null) && !requiresLocations && isLocationsRequired !== null}`);
-                
                 if ((requiresBrands || isBrandsRequired === null) && !requiresLocations && isLocationsRequired !== null) {
-                    console.log(`✅ [BOT] SHART TO'G'RI - Faqat brendlar ko'rsatiladi`);
                     userStates[adminChatId].state = 'awaiting_brands';
                     
                     // Brendlarni olish
@@ -1154,7 +1089,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         if (allBrands.length === 0) {
                             console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
                         } else {
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
                         }
                         
                         if (allBrands.length === 0) {
@@ -1168,62 +1102,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             return;
                         }
                         
-                        console.log(`🏷️ [BOT] ========== BRENDLAR KO'RSATILMOQDA (Faqat brendlar) ==========`);
-                        console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
-                        console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
-                        console.log(`🏷️ [BOT] Rol sozlamalari: requires_brands=${isBrandsRequired}, requiresBrands=${requiresBrands}, canSkipBrands=${canSkipBrands}`);
                         
-                        // Brendlar ro'yxatini formatlash (filiallar kabi)
-                        let brandButtons = [];
-                        
-                        if (allBrands.length <= 5) {
-                            // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                            console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                            brandButtons = allBrands.map(brand => ([{ 
-                                text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                callback_data: `brand_${brand.id}` 
-                            }]));
-                        } else if (allBrands.length <= 8) {
-                            // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                            console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                            for (let i = 0; i < allBrands.length; i += 2) {
-                                const row = [];
-                                row.push({ 
-                                    text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                    callback_data: `brand_${allBrands[i].id}` 
-                                });
-                                if (i + 1 < allBrands.length) {
-                                    row.push({ 
-                                        text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                        callback_data: `brand_${allBrands[i + 1].id}` 
-                                    });
-                                }
-                                brandButtons.push(row);
-                            }
-                        } else {
-                            // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                            console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                            for (let i = 0; i < allBrands.length; i += 3) {
-                                const row = [];
-                                row.push({ 
-                                    text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                    callback_data: `brand_${allBrands[i].id}` 
-                                });
-                                if (i + 1 < allBrands.length) {
-                                    row.push({ 
-                                        text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                        callback_data: `brand_${allBrands[i + 1].id}` 
-                                    });
-                                }
-                                if (i + 2 < allBrands.length) {
-                                    row.push({ 
-                                        text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
-                                        callback_data: `brand_${allBrands[i + 2].id}` 
-                                    });
-                                }
-                                brandButtons.push(row);
-                            }
-                        }
+                        // Brendlar ro'yxatini formatlash
+                        const brandButtons = createBrandButtons(allBrands);
                         
                         const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                         if (canSkipBrands) {
@@ -1239,10 +1120,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             ]
                         };
                         
-                        console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
-                        console.log(`✅ [BOT] Brendlar keyboard tugmalari:`, JSON.stringify(brandButtons.map(row => row.map(btn => btn.text)), null, 2));
-                        console.log(`✅ [BOT] Finish tugmalari:`, finishBrandButtons.map(btn => btn.text));
-                        console.log(`🏷️ [BOT] ========== BRENDLAR KEYBOARD TAYYOR (Faqat brendlar) ==========`);
                         
                         const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                         await bot.editMessageText(newText, {
@@ -1268,12 +1145,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 }
                 
                 // Agar hech narsa kerak bo'lmasa, to'g'ridan-to'g'ri tasdiqlash
-                console.log(`⚠️ [BOT] ========== HECH NARSA KERAK EMAS - TO'GRIDAN-TO'G'RI TASDIQLASH ==========`);
-                console.log(`⚠️ [BOT] Bu holat quyidagicha bo'lishi mumkin:`);
-                console.log(`   - Filiallar kerak emas (requiresLocations=false) va Brendlar kerak emas (requiresBrands=false)`);
-                console.log(`   - Yoki filiallar va brendlar mavjud emas`);
-                console.log(`⚠️ [BOT] Foydalanuvchi to'g'ridan-to'g'ri tasdiqlanmoqda. Locations: [], Brands: []`);
-                console.log(`⚠️ [BOT] ==========================================`);
+                // Agar hech narsa kerak bo'lmasa, to'g'ridan-to'g'ri tasdiqlash
                 
                 delete userStates[adminChatId];
 
@@ -1403,7 +1275,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             if (allBrands.length === 0) {
                                 console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
                             } else {
-                                console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
                             }
                             
                             if (allBrands.length === 0) {
@@ -1419,62 +1290,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
                             
-                            console.log(`🏷️ [BOT] ========== BRENDLAR KO'RSATILMOQDA (Filiallar skip qilindi) ==========`);
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
-                            console.log(`🏷️ [BOT] Rol sozlamalari: requires_brands=${isBrandsRequired}, requiresBrands=${requiresBrands}, canSkipBrands=${canSkipBrands}`);
                             
-                            // Brendlar ro'yxatini formatlash (filiallar kabi)
-                            let brandButtons = [];
-                            
-                            if (allBrands.length <= 5) {
-                                // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                                console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                brandButtons = allBrands.map(brand => ([{ 
-                                    text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                    callback_data: `brand_${brand.id}` 
-                                }]));
-                            } else if (allBrands.length <= 8) {
-                                // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                                console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                for (let i = 0; i < allBrands.length; i += 2) {
-                                    const row = [];
-                                    row.push({ 
-                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                        callback_data: `brand_${allBrands[i].id}` 
-                                    });
-                                    if (i + 1 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 1].id}` 
-                                        });
-                                    }
-                                    brandButtons.push(row);
-                                }
-                            } else {
-                                // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                                console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                for (let i = 0; i < allBrands.length; i += 3) {
-                                    const row = [];
-                                    row.push({ 
-                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                        callback_data: `brand_${allBrands[i].id}` 
-                                    });
-                                    if (i + 1 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 1].id}` 
-                                        });
-                                    }
-                                    if (i + 2 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 2].id}` 
-                                        });
-                                    }
-                                    brandButtons.push(row);
-                                }
-                            }
+                            // Brendlar ro'yxatini formatlash
+                            const brandButtons = createBrandButtons(allBrands);
                             
                             const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                             if (canSkipBrands) {
@@ -1490,10 +1308,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                                 ]
                             };
                             
-                            console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}, Skip imkoniyati: ${canSkipBrands}`);
-                            console.log(`✅ [BOT] Brendlar keyboard tugmalari:`, JSON.stringify(brandButtons.map(row => row.map(btn => btn.text)), null, 2));
-                            console.log(`✅ [BOT] Finish tugmalari:`, finishBrandButtons.map(btn => btn.text));
-                            console.log(`🏷️ [BOT] ========== BRENDLAR KEYBOARD TAYYOR (Filiallar skip qilindi) ==========`);
                             
                             const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> O'tkazib yuborildi\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
@@ -1589,7 +1403,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             if (allBrands.length === 0) {
                                 console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
                             } else {
-                                console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
                             }
                             
                             if (allBrands.length === 0) {
@@ -1605,63 +1418,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
                             
-                            console.log(`🏷️ [BOT] ========== BRENDLAR KO'RSATILMOQDA (Filiallar tanlandi) ==========`);
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
                             const canSkipBrands = userStates[adminChatId].canSkipBrands || false;
-                            console.log(`🏷️ [BOT] Rol sozlamalari: canSkipBrands=${canSkipBrands}`);
                             
-                            // Brendlar ro'yxatini formatlash (filiallar kabi)
-                            let brandButtons = [];
-                            
-                            if (allBrands.length <= 5) {
-                                // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                                console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                brandButtons = allBrands.map(brand => ([{ 
-                                    text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                    callback_data: `brand_${brand.id}` 
-                                }]));
-                            } else if (allBrands.length <= 8) {
-                                // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                                console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                for (let i = 0; i < allBrands.length; i += 2) {
-                                    const row = [];
-                                    row.push({ 
-                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                        callback_data: `brand_${allBrands[i].id}` 
-                                    });
-                                    if (i + 1 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 1].id}` 
-                                        });
-                                    }
-                                    brandButtons.push(row);
-                                }
-                            } else {
-                                // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                                console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
-                                for (let i = 0; i < allBrands.length; i += 3) {
-                                    const row = [];
-                                    row.push({ 
-                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
-                                        callback_data: `brand_${allBrands[i].id}` 
-                                    });
-                                    if (i + 1 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 1].id}` 
-                                        });
-                                    }
-                                    if (i + 2 < allBrands.length) {
-                                        row.push({ 
-                                            text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
-                                            callback_data: `brand_${allBrands[i + 2].id}` 
-                                        });
-                                    }
-                                    brandButtons.push(row);
-                                }
-                            }
+                            // Brendlar ro'yxatini formatlash
+                            const brandButtons = createBrandButtons(allBrands);
                             
                             const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                             if (canSkipBrands) {
@@ -1677,10 +1437,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                                 ]
                             };
                             
-                            console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
-                            console.log(`✅ [BOT] Brendlar keyboard tugmalari:`, JSON.stringify(brandButtons.map(row => row.map(btn => btn.text)), null, 2));
-                            console.log(`✅ [BOT] Finish tugmalari:`, finishBrandButtons.map(btn => btn.text));
-                            console.log(`🏷️ [BOT] ========== BRENDLAR KEYBOARD TAYYOR (Filiallar tanlandi) ==========`);
                             
                             const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> ${locations.length > 0 ? locations.map(l => `<code>${escapeHtml(l)}</code>`).join(', ') : 'yo\'q'}\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
@@ -1750,59 +1506,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     const settings = await db('settings').where({ key: 'app_settings' }).first();
                     const allLocations = settings ? JSON.parse(settings.value).locations : [];
                     
-                    console.log(`📍 [BOT] Filiallar ro'yxati yangilanmoqda. Umumiy soni: ${allLocations.length}, Tanlangan: ${selectedLocations.length}`);
                     
                     // Filiallar ro'yxatini formatlash
-                    let locationButtons = [];
-                    
-                    if (allLocations.length <= 5) {
-                        // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                        console.log(`📋 [BOT] Filiallar list formatida ko'rsatilmoqda (${allLocations.length} ta)`);
-                        locationButtons = allLocations.map(loc => ([{ 
-                            text: `${selectedLocations.includes(loc) ? '✔️ ' : ''}${escapeHtml(loc)}`, 
-                            callback_data: `loc_${loc}` 
-                        }]));
-                    } else if (allLocations.length <= 8) {
-                        // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                        console.log(`📋 [BOT] Filiallar 2 ustunli grid formatida ko'rsatilmoqda (${allLocations.length} ta)`);
-                        for (let i = 0; i < allLocations.length; i += 2) {
-                            const row = [];
-                            row.push({ 
-                                text: `${selectedLocations.includes(allLocations[i]) ? '✔️ ' : ''}${escapeHtml(allLocations[i])}`, 
-                                callback_data: `loc_${allLocations[i]}` 
-                            });
-                            if (i + 1 < allLocations.length) {
-                                row.push({ 
-                                    text: `${selectedLocations.includes(allLocations[i + 1]) ? '✔️ ' : ''}${escapeHtml(allLocations[i + 1])}`, 
-                                    callback_data: `loc_${allLocations[i + 1]}` 
-                                });
-                            }
-                            locationButtons.push(row);
-                        }
-                    } else {
-                        // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                        console.log(`📋 [BOT] Filiallar 3 ustunli grid formatida ko'rsatilmoqda (${allLocations.length} ta)`);
-                        for (let i = 0; i < allLocations.length; i += 3) {
-                            const row = [];
-                            row.push({ 
-                                text: `${selectedLocations.includes(allLocations[i]) ? '✔️ ' : ''}${escapeHtml(allLocations[i])}`, 
-                                callback_data: `loc_${allLocations[i]}` 
-                            });
-                            if (i + 1 < allLocations.length) {
-                                row.push({ 
-                                    text: `${selectedLocations.includes(allLocations[i + 1]) ? '✔️ ' : ''}${escapeHtml(allLocations[i + 1])}`, 
-                                    callback_data: `loc_${allLocations[i + 1]}` 
-                                });
-                            }
-                            if (i + 2 < allLocations.length) {
-                                row.push({ 
-                                    text: `${selectedLocations.includes(allLocations[i + 2]) ? '✔️ ' : ''}${escapeHtml(allLocations[i + 2])}`, 
-                                    callback_data: `loc_${allLocations[i + 2]}` 
-                                });
-                            }
-                            locationButtons.push(row);
-                        }
-                    }
+                    const locationButtons = createLocationButtons(allLocations, selectedLocations);
                     
                     const finishButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }];
                     const canSkipLocations = userStates[adminChatId].canSkipLocations || false;
@@ -1848,41 +1554,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     const settings = await db('settings').where({ key: 'app_settings' }).first();
                     const allLocations = settings ? JSON.parse(settings.value).locations : [];
                     
-                    console.log(`📍 [BOT] ========== ORQAGA QAYTARISH: FILIALLAR ==========`);
-                    console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`, allLocations);
-                    console.log(`📍 [BOT] Rol sozlamalari: requires_locations=${isLocationsRequired}, requiresLocations=${requiresLocations}, canSkipLocations=${canSkipLocations}`);
                     
                     if (requiresLocations && allLocations.length > 0) {
                         // Filiallar ro'yxatini formatlash
-                        let locationButtons = [];
-                        
-                        if (allLocations.length <= 5) {
-                            locationButtons = allLocations.map(loc => ([{ 
-                                text: escapeHtml(loc), 
-                                callback_data: `loc_${loc}` 
-                            }]));
-                        } else if (allLocations.length <= 8) {
-                            for (let i = 0; i < allLocations.length; i += 2) {
-                                const row = [];
-                                row.push({ text: escapeHtml(allLocations[i]), callback_data: `loc_${allLocations[i]}` });
-                                if (i + 1 < allLocations.length) {
-                                    row.push({ text: escapeHtml(allLocations[i + 1]), callback_data: `loc_${allLocations[i + 1]}` });
-                                }
-                                locationButtons.push(row);
-                            }
-                        } else {
-                            for (let i = 0; i < allLocations.length; i += 3) {
-                                const row = [];
-                                row.push({ text: escapeHtml(allLocations[i]), callback_data: `loc_${allLocations[i]}` });
-                                if (i + 1 < allLocations.length) {
-                                    row.push({ text: escapeHtml(allLocations[i + 1]), callback_data: `loc_${allLocations[i + 1]}` });
-                                }
-                                if (i + 2 < allLocations.length) {
-                                    row.push({ text: escapeHtml(allLocations[i + 2]), callback_data: `loc_${allLocations[i + 2]}` });
-                                }
-                                locationButtons.push(row);
-                            }
-                        }
+                        const locationButtons = createLocationButtons(allLocations);
                         
                         const finishButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }];
                         if (canSkipLocations) {
@@ -1897,10 +1572,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             ]
                         };
                         
-                        console.log(`✅ [BOT] Filiallar keyboard yaratildi (orqaga qaytarish). Qatorlar soni: ${locationButtons.length}`);
-                        console.log(`✅ [BOT] Filiallar keyboard tugmalari:`, JSON.stringify(locationButtons.map(row => row.map(btn => btn.text)), null, 2));
-                        console.log(`✅ [BOT] Finish tugmalari:`, finishButtons.map(btn => btn.text));
-                        console.log(`📍 [BOT] ========== FILIALLAR KEYBOARD TAYYOR (Orqaga qaytarish) ==========`);
                         
                         // Original textni qaytarish (brendlar qismini olib tashlash)
                         const originalMessageText = originalText.split('\n\n<b>Rol:</b>')[0] || originalText.split('\n\n<b>Filiallar:</b>')[0] || originalText.split('\n\nEndi brend')[0] || originalText;
@@ -2063,7 +1734,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     }
 
                     // Barcha brendlarni to'g'ridan-to'g'ri database'dan olish
-                    console.log(`🏷️ [BOT] Brendlar ro'yxatini yangilash. Tanlangan brendlar: ${selectedBrands.length}`);
                     
                     try {
                         console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda (ro'yxat yangilash)...`);
@@ -2073,57 +1743,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         
                         console.log(`✅ [BOT] Brendlar database'dan olingan. Soni: ${allBrands.length}`);
                         if (allBrands.length > 0) {
-                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
                         }
                         
-                        // Brendlar ro'yxatini formatlash (filiallar kabi, tanlanganlar bilan)
-                        let brandButtons = [];
-                        
-                        if (allBrands.length <= 5) {
-                            // 5 tagacha - list formatida (har bir qatorda 1 ta)
-                            brandButtons = allBrands.map(brand => ([{ 
-                                text: `${selectedBrands.includes(brand.id) ? '✔️ ' : ''}${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`,
-                                callback_data: `brand_${brand.id}` 
-                            }]));
-                        } else if (allBrands.length <= 8) {
-                            // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
-                            for (let i = 0; i < allBrands.length; i += 2) {
-                                const row = [];
-                                row.push({ 
-                                    text: `${selectedBrands.includes(allBrands[i].id) ? '✔️ ' : ''}${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`,
-                                    callback_data: `brand_${allBrands[i].id}` 
-                                });
-                                if (i + 1 < allBrands.length) {
-                                    row.push({ 
-                                        text: `${selectedBrands.includes(allBrands[i + 1].id) ? '✔️ ' : ''}${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`,
-                                        callback_data: `brand_${allBrands[i + 1].id}` 
-                                    });
-                                }
-                                brandButtons.push(row);
-                            }
-                        } else {
-                            // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
-                            for (let i = 0; i < allBrands.length; i += 3) {
-                                const row = [];
-                                row.push({ 
-                                    text: `${selectedBrands.includes(allBrands[i].id) ? '✔️ ' : ''}${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`,
-                                    callback_data: `brand_${allBrands[i].id}` 
-                                });
-                                if (i + 1 < allBrands.length) {
-                                    row.push({ 
-                                        text: `${selectedBrands.includes(allBrands[i + 1].id) ? '✔️ ' : ''}${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`,
-                                        callback_data: `brand_${allBrands[i + 1].id}` 
-                                    });
-                                }
-                                if (i + 2 < allBrands.length) {
-                                    row.push({ 
-                                        text: `${selectedBrands.includes(allBrands[i + 2].id) ? '✔️ ' : ''}${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`,
-                                        callback_data: `brand_${allBrands[i + 2].id}` 
-                                    });
-                                }
-                                brandButtons.push(row);
-                            }
-                        }
+                        // Brendlar ro'yxatini formatlash
+                        const brandButtons = createBrandButtons(allBrands, selectedBrands);
                         
                         const keyboard = {
                             inline_keyboard: [
@@ -2132,7 +1755,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             ]
                         };
                         
-                        console.log(`✅ [BOT] Brendlar keyboard yangilandi. Brendlar soni: ${brandButtons.length}`);
                         
                         await bot.editMessageReplyMarkup(keyboard, {
                             chat_id: adminChatId,
