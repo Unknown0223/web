@@ -4,7 +4,7 @@
 import { state } from './modules/state.js';
 import { DOM } from './modules/dom.js';
 import { safeFetch, fetchCurrentUser, fetchSettings, fetchUsers, fetchPendingUsers, fetchRoles, logout } from './modules/api.js';
-import { showToast, hasPermission, showPageLoader, hidePageLoader } from './modules/utils.js';
+import { showToast, hasPermission, showPageLoader, hidePageLoader, updateLoaderType } from './modules/utils.js';
 import { applyPermissions, navigateTo, handleNavigation } from './modules/navigation.js';
 import { setupDashboard } from './modules/dashboard.js';
 import { setupKpiPage, setupKpiEventListeners } from './modules/kpi.js';
@@ -61,9 +61,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function init() {
     try {
+        // Loader allaqachon ko'rsatilgan bo'lishi kerak (inline script orqali)
+        // Lekin agar ko'rsatilmagan bo'lsa, darhol ko'rsatamiz
+        const loader = document.getElementById('page-loader');
+        if (loader && !loader.classList.contains('active')) {
+            showPageLoader('Tizim yuklanmoqda...');
+        }
+        
+        console.log('🚀 [ADMIN] Init boshlandi');
+        const initStartTime = Date.now();
+        
         // Joriy foydalanuvchini olish
         state.currentUser = await fetchCurrentUser();
-        if (!state.currentUser) return;
+        if (!state.currentUser) {
+            console.warn('⚠️ [ADMIN] Foydalanuvchi topilmadi');
+            hidePageLoader();
+            return;
+        }
+        
+        console.log(`✅ [ADMIN] Foydalanuvchi olingan: ${state.currentUser.username}`);
         
         applyPermissions();
         
@@ -75,12 +91,18 @@ async function init() {
             { key: 'pendingUsers', fetch: fetchPendingUsers, permission: 'users:edit' }
         ];
 
+        console.log('📦 [ADMIN] Ma\'lumotlar yuklanmoqda...');
+        const dataLoadStartTime = Date.now();
+        
         const results = await Promise.all(dataSources.map(async ds => {
             if (hasPermission(state.currentUser, ds.permission)) {
                 return await ds.fetch();
             }
             return null;
         }));
+
+        const dataLoadTime = Date.now() - dataLoadStartTime;
+        console.log(`✅ [ADMIN] Ma'lumotlar yuklandi. Vaqt: ${dataLoadTime}ms`);
 
         results.forEach((data, index) => {
             const { key } = dataSources[index];
@@ -99,9 +121,16 @@ async function init() {
         // AVVAL brending qo'llash (loader turi uchun)
         applyBranding(state.settings.branding_settings);
         
-        // KEYIN loader ko'rsatish (to'g'ri tur bilan)
+        // Loader matnini yangilash (agar brending sozlamalarida bo'lsa)
         const loaderText = state.settings.branding_settings?.loader?.text || 'Tizim yuklanmoqda...';
-        showPageLoader(loaderText);
+        const loaderTextElement = document.getElementById('loader-text');
+        if (loaderTextElement) {
+            loaderTextElement.textContent = loaderText;
+        }
+        
+        // Loader animatsiyasini yangilash (agar brending sozlamalarida bo'lsa)
+        const loaderType = state.settings.branding_settings?.loader?.type || 'spinner';
+        updateLoaderType(loaderType);
         
         // Komponentlarni render qilish
         renderAllComponents();

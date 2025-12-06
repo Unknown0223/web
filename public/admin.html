@@ -151,11 +151,34 @@
 <body class="admin-page">
 
     <!-- Global Page Loader -->
-    <div id="page-loader" class="page-loader">
-        <div id="loader-animation"></div>
-        <div id="loader-text" class="loader-text">Yuklanmoqda...</div>
+    <div id="page-loader" class="page-loader active">
+        <div id="loader-animation" class="loader-spinner"></div>
+        <div id="loader-text" class="loader-text">Tizim yuklanmoqda...</div>
         <div id="loader-progress" class="loader-progress-bar"></div>
     </div>
+    
+    <!-- Inline script to show loader immediately -->
+    <script>
+        // Darhol loader ko'rsatish (sahifa yuklanganda)
+        (function() {
+            const loader = document.getElementById('page-loader');
+            const loaderAnimation = document.getElementById('loader-animation');
+            const loaderText = document.getElementById('loader-text');
+            
+            if (loader && !loader.classList.contains('active')) {
+                loader.classList.add('active');
+            }
+            
+            // Default loader animatsiyasini o'rnatish
+            if (loaderAnimation && !loaderAnimation.className) {
+                loaderAnimation.className = 'loader-spinner';
+            }
+            
+            if (loaderText && !loaderText.textContent) {
+                loaderText.textContent = 'Tizim yuklanmoqda...';
+            }
+        })();
+    </script>
 
     <div class="admin-layout">
         <!-- 1. YON PANEL (SIDEBAR ) -->
