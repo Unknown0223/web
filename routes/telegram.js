@@ -44,12 +44,19 @@ router.post('/register-chat', async (req, res) => {
 // ===================================================================
 router.post('/finalize-approval', async (req, res) => {
     const { user_id, role, locations = [], brands = [] } = req.body;
+    
+    console.log(`📥 [TELEGRAM API] Finalize approval so'rovi qabul qilindi. User ID: ${user_id}, Role: ${role}`);
+    console.log(`   - Locations: ${locations.length} ta`, locations);
+    console.log(`   - Brands: ${brands.length} ta`, brands);
+    
     if (!user_id || !role) {
+        console.log(`❌ [TELEGRAM API] Validatsiya xatosi: user_id yoki role yo'q`);
         return res.status(400).json({ message: "Foydalanuvchi ID si va rol yuborilishi shart." });
     }
 
     // Super admin yaratish mumkin emas
     if (role === 'super_admin') {
+        console.log(`❌ [TELEGRAM API] Super admin yaratishga urinish`);
         return res.status(403).json({ message: "Super admin yaratish mumkin emas." });
     }
 
@@ -57,22 +64,48 @@ router.post('/finalize-approval', async (req, res) => {
     const { db } = require('../db.js');
     const roleExists = await db('roles').where({ role_name: role }).first();
     if (!roleExists) {
+        console.log(`❌ [TELEGRAM API] Rol topilmadi. Role: ${role}`);
         return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
 
     // Rol talablarini bazadan olish
     const roleData = await db('roles').where({ role_name: role }).first();
     if (!roleData) {
+        console.log(`❌ [TELEGRAM API] Rol ma'lumotlari topilmadi. Role: ${role}`);
         return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
     
+    // Rol talablarini aniqlash (null = belgilanmagan, true/false = belgilangan)
+    const isLocationsRequired = roleData.requires_locations !== undefined && roleData.requires_locations !== null 
+        ? roleData.requires_locations 
+        : null;
+    const isBrandsRequired = roleData.requires_brands !== undefined && roleData.requires_brands !== null 
+        ? roleData.requires_brands 
+        : null;
+    
+    console.log(`🔍 [TELEGRAM API] Rol talablari tekshirilmoqda.`);
+    console.log(`   - requires_locations: ${isLocationsRequired} (${typeof isLocationsRequired}), locations.length: ${locations.length}`);
+    console.log(`   - requires_brands: ${isBrandsRequired} (${typeof isBrandsRequired}), brands.length: ${brands.length}`);
+    
     // Rol talablariga ko'ra validatsiya
-    if (roleData.requires_locations && locations.length === 0) {
+    // Faqat belgilangan (true) bo'lsa va locations bo'sh bo'lsa, xatolik
+    if (isLocationsRequired === true && locations.length === 0) {
+        console.log(`❌ [TELEGRAM API] Validatsiya xatosi: Filiallar majburiy, lekin tanlanmagan. Role: ${role}`);
         return res.status(400).json({ message: `"${role}" roli uchun kamida bitta filial tanlanishi shart.` });
     }
     
-    if (roleData.requires_brands && brands.length === 0) {
+    // Faqat belgilangan (true) bo'lsa va brands bo'sh bo'lsa, xatolik
+    if (isBrandsRequired === true && brands.length === 0) {
+        console.log(`❌ [TELEGRAM API] Validatsiya xatosi: Brendlar majburiy, lekin tanlanmagan. Role: ${role}`);
         return res.status(400).json({ message: `"${role}" roli uchun kamida bitta brend tanlanishi shart.` });
+    }
+    
+    // Agar null (belgilanmagan) bo'lsa, validatsiya o'tkazilmaydi (skip qilish mumkin)
+    if (isLocationsRequired === null) {
+        console.log(`✅ [TELEGRAM API] Filiallar belgilanmagan (null) - skip qilish mumkin. Locations: ${locations.length} ta`);
+    }
+    if (isBrandsRequired === null) {
+        console.log(`✅ [TELEGRAM API] Brendlar belgilanmagan (null) - skip qilish mumkin. Brands: ${brands.length} ta`);
     }
 
     try {
@@ -131,12 +164,19 @@ router.post('/finalize-approval', async (req, res) => {
 
         await db('pending_registrations').where({ user_id: user_id }).del();
 
+        console.log(`✅ [TELEGRAM API] Foydalanuvchi muvaffaqiyatli tasdiqlandi. User ID: ${user_id}, Role: ${role}, Locations: ${locations.length} ta, Brands: ${brands.length} ta`);
         res.json({ status: 'success', message: 'Foydalanuvchi muvaffaqiyatli tasdiqlandi.' });
 
     } catch (error) {
-        console.error("/api/telegram/finalize-approval xatoligi:", error);
+        console.error(`❌ [TELEGRAM API] /api/telegram/finalize-approval xatoligi:`, error);
+        console.error(`❌ [TELEGRAM API] Error stack:`, error.stack);
         // Agar xatolik yuz bersa, statusni qaytarish
-        await db('users').where({ id: user_id, status: 'status_in_process' }).update({ status: 'pending_approval' });
+        try {
+            await db('users').where({ id: user_id, status: 'status_in_process' }).update({ status: 'pending_approval' });
+            console.log(`🔄 [TELEGRAM API] Foydalanuvchi statusi qaytarildi: pending_approval`);
+        } catch (updateError) {
+            console.error(`❌ [TELEGRAM API] Statusni qaytarishda xatolik:`, updateError);
+        }
         res.status(500).json({ message: "Foydalanuvchini tasdiqlashda server xatoligi." });
     }
 });

@@ -321,16 +321,41 @@ router.put('/:id/approve', isAuthenticated, hasPermission('users:edit'), async (
     // Rol bazada mavjudligini tekshirish va talablarini olish
     const roleData = await db('roles').where({ role_name: role }).first();
     if (!roleData) {
+        console.log(`❌ [BACKEND] Rol topilmadi. Role: ${role}`);
         return res.status(400).json({ message: "Tanlangan rol mavjud emas." });
     }
     
+    // Rol talablarini aniqlash (null = belgilanmagan, true/false = belgilangan)
+    const isLocationsRequired = roleData.requires_locations !== undefined && roleData.requires_locations !== null 
+        ? roleData.requires_locations 
+        : null;
+    const isBrandsRequired = roleData.requires_brands !== undefined && roleData.requires_brands !== null 
+        ? roleData.requires_brands 
+        : null;
+    
+    console.log(`🔍 [BACKEND] Rol talablari tekshirilmoqda. User ID: ${userId}, Role: ${role}`);
+    console.log(`   - requires_locations: ${isLocationsRequired} (${typeof isLocationsRequired}), locations.length: ${locations.length}`);
+    console.log(`   - requires_brands: ${isBrandsRequired} (${typeof isBrandsRequired}), brands.length: ${brands.length}`);
+    
     // Rol talablariga ko'ra validatsiya
-    if (roleData.requires_locations && locations.length === 0) {
+    // Faqat belgilangan (true) bo'lsa va locations bo'sh bo'lsa, xatolik
+    if (isLocationsRequired === true && locations.length === 0) {
+        console.log(`❌ [BACKEND] Validatsiya xatosi: Filiallar majburiy, lekin tanlanmagan. Role: ${role}`);
         return res.status(400).json({ message: `"${role}" roli uchun kamida bitta filial tanlanishi shart.` });
     }
     
-    if (roleData.requires_brands && brands.length === 0) {
+    // Faqat belgilangan (true) bo'lsa va brands bo'sh bo'lsa, xatolik
+    if (isBrandsRequired === true && brands.length === 0) {
+        console.log(`❌ [BACKEND] Validatsiya xatosi: Brendlar majburiy, lekin tanlanmagan. Role: ${role}`);
         return res.status(400).json({ message: `"${role}" roli uchun kamida bitta brend tanlanishi shart.` });
+    }
+    
+    // Agar null (belgilanmagan) bo'lsa, validatsiya o'tkazilmaydi (skip qilish mumkin)
+    if (isLocationsRequired === null) {
+        console.log(`✅ [BACKEND] Filiallar belgilanmagan (null) - skip qilish mumkin. Locations: ${locations.length} ta`);
+    }
+    if (isBrandsRequired === null) {
+        console.log(`✅ [BACKEND] Brendlar belgilanmagan (null) - skip qilish mumkin. Brands: ${brands.length} ta`);
     }
 
     try {

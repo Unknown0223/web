@@ -412,6 +412,8 @@ export function toggleLocationVisibilityForUserForm() {
 export async function toggleLocationVisibilityForApprovalForm() {
     const role = DOM.approvalRoleSelect?.value;
     
+    console.log(`🔄 [WEB] Rol tanlandi, filial/brend ko'rsatish tekshirilmoqda. Role: ${role}`);
+    
     // Rol talablarini state'dan olish
     const roleData = state.roles.find(r => r.role_name === role);
     
@@ -429,6 +431,8 @@ export async function toggleLocationVisibilityForApprovalForm() {
             : null)  // null = belgilanmagan
         : null;
     
+    console.log(`🔍 [WEB] Rol talablari: requires_locations=${isLocationsRequired}, requires_brands=${isBrandsRequired}`);
+    
     // Belgilanmagan bo'lsa, default holatda ko'rsatiladi (ixtiyoriy)
     const requiresLocations = isLocationsRequired !== null ? isLocationsRequired : true;
     const requiresBrands = isBrandsRequired !== null ? isBrandsRequired : true;
@@ -437,6 +441,10 @@ export async function toggleLocationVisibilityForApprovalForm() {
     const showSkipLocations = isLocationsRequired === null;
     const showSkipBrands = isBrandsRequired === null;
     const showSkipAll = showSkipLocations || showSkipBrands;
+    
+    console.log(`📊 [WEB] Ko'rsatish sozlamalari:`);
+    console.log(`   - Filiallar ko'rsatish: ${requiresLocations ? 'ha' : 'yo\'q'}, Skip tugmasi: ${showSkipLocations ? 'ha' : 'yo\'q'}`);
+    console.log(`   - Brendlar ko'rsatish: ${requiresBrands ? 'ha' : 'yo\'q'}, Skip tugmasi: ${showSkipBrands ? 'ha' : 'yo\'q'}`);
     
     const locationsDisplay = requiresLocations ? 'block' : 'none';
     const brandsDisplay = requiresBrands ? 'block' : 'none';
@@ -449,24 +457,41 @@ export async function toggleLocationVisibilityForApprovalForm() {
     const skipLocationsBtn = document.getElementById('skip-locations-btn');
     const skipBrandsBtn = document.getElementById('skip-brands-btn');
     const skipAllBtn = document.getElementById('skip-all-btn');
+    const backToRoleBtn = document.getElementById('back-to-role-btn');
+    const backToLocationsBtn = document.getElementById('back-to-locations-btn');
     
     if (skipLocationsBtn) {
         skipLocationsBtn.style.display = showSkipLocations && locationsDisplay === 'block' ? 'block' : 'none';
+        console.log(`   - Skip locations tugmasi: ${showSkipLocations && locationsDisplay === 'block' ? 'ko\'rsatiladi' : 'yashiriladi'}`);
     }
     if (skipBrandsBtn) {
         skipBrandsBtn.style.display = showSkipBrands && brandsDisplay === 'block' ? 'block' : 'none';
+        console.log(`   - Skip brands tugmasi: ${showSkipBrands && brandsDisplay === 'block' ? 'ko\'rsatiladi' : 'yashiriladi'}`);
     }
     if (skipAllBtn) {
         skipAllBtn.style.display = showSkipAll ? 'block' : 'none';
+        console.log(`   - Skip all tugmasi: ${showSkipAll ? 'ko\'rsatiladi' : 'yashiriladi'}`);
+    }
+    
+    // "Orqaga" tugmalarini ko'rsatish/yashirish
+    if (backToRoleBtn) {
+        backToRoleBtn.style.display = locationsDisplay === 'block' ? 'block' : 'none';
+        console.log(`   - Orqaga (Rol) tugmasi: ${locationsDisplay === 'block' ? 'ko\'rsatiladi' : 'yashiriladi'}`);
+    }
+    if (backToLocationsBtn) {
+        backToLocationsBtn.style.display = brandsDisplay === 'block' ? 'block' : 'none';
+        console.log(`   - Orqaga (Filiallar) tugmasi: ${brandsDisplay === 'block' ? 'ko\'rsatiladi' : 'yashiriladi'}`);
     }
     
     // Filiallar kerak bo'lsa, filiallarni yuklash
     if (locationsDisplay === 'block') {
+        console.log(`📥 [WEB] Filiallar yuklanmoqda...`);
         await loadLocationsForApproval();
     }
     
     // Brendlar kerak bo'lsa, brendlarni yuklash
     if (brandsDisplay === 'block') {
+        console.log(`📥 [WEB] Brendlar yuklanmoqda...`);
         await loadBrandsForApproval();
     }
     
@@ -475,6 +500,8 @@ export async function toggleLocationVisibilityForApprovalForm() {
     window.approvalSkipBrands = false;
     window.approvalIsLocationsRequired = isLocationsRequired;
     window.approvalIsBrandsRequired = isBrandsRequired;
+    
+    console.log(`✅ [WEB] Rol sozlamalari yangilandi. State: skipLocations=${window.approvalSkipLocations}, skipBrands=${window.approvalSkipBrands}`);
 }
 
 async function loadLocationsForApproval() {
@@ -848,11 +875,14 @@ function setupApprovalSkipButtons() {
     const skipLocationsBtn = document.getElementById('skip-locations-btn');
     if (skipLocationsBtn) {
         skipLocationsBtn.onclick = () => {
+            console.log(`⏭️ [WEB] "Filiallarni o'tkazib yuborish" tugmasi bosildi`);
             window.approvalSkipLocations = true;
             // Barcha checkboxlarni o'chirish
-            document.querySelectorAll('#approval-locations-checkbox-list input[type="checkbox"]').forEach(cb => {
+            const checkboxes = document.querySelectorAll('#approval-locations-checkbox-list input[type="checkbox"]');
+            checkboxes.forEach(cb => {
                 cb.checked = false;
             });
+            console.log(`✅ [WEB] ${checkboxes.length} ta filial checkbox o'chirildi`);
             skipLocationsBtn.style.opacity = '0.5';
             skipLocationsBtn.innerHTML = '<i data-feather="check"></i> O\'tkazib yuborildi';
             if (window.feather) window.feather.replace();
@@ -863,11 +893,14 @@ function setupApprovalSkipButtons() {
     const skipBrandsBtn = document.getElementById('skip-brands-btn');
     if (skipBrandsBtn) {
         skipBrandsBtn.onclick = () => {
+            console.log(`⏭️ [WEB] "Brendlarni o'tkazib yuborish" tugmasi bosildi`);
             window.approvalSkipBrands = true;
             // Barcha checkboxlarni o'chirish
-            document.querySelectorAll('#approval-brands-list input[type="checkbox"]').forEach(cb => {
+            const checkboxes = document.querySelectorAll('#approval-brands-list input[type="checkbox"]');
+            checkboxes.forEach(cb => {
                 cb.checked = false;
             });
+            console.log(`✅ [WEB] ${checkboxes.length} ta brend checkbox o'chirildi`);
             skipBrandsBtn.style.opacity = '0.5';
             skipBrandsBtn.innerHTML = '<i data-feather="check"></i> O\'tkazib yuborildi';
             if (window.feather) window.feather.replace();
@@ -878,9 +911,53 @@ function setupApprovalSkipButtons() {
     const skipAllBtn = document.getElementById('skip-all-btn');
     if (skipAllBtn) {
         skipAllBtn.onclick = async () => {
+            console.log(`⏭️ [WEB] "Filial va Brendlarni O'tkazib Yuborish" tugmasi bosildi`);
             window.approvalSkipLocations = true;
             window.approvalSkipBrands = true;
             // Barcha checkboxlarni o'chirish
+            const locationCheckboxes = document.querySelectorAll('#approval-locations-checkbox-list input[type="checkbox"]');
+            const brandCheckboxes = document.querySelectorAll('#approval-brands-list input[type="checkbox"]');
+            locationCheckboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            brandCheckboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            console.log(`✅ [WEB] ${locationCheckboxes.length} ta filial va ${brandCheckboxes.length} ta brend checkbox o'chirildi`);
+            
+            // Submit qilish
+            const form = document.getElementById('approval-form');
+            if (form) {
+                console.log(`📤 [WEB] Form avtomatik yuborilmoqda...`);
+                const event = new Event('submit', { bubbles: true, cancelable: true });
+                form.dispatchEvent(event);
+            }
+        };
+    }
+    
+    // Orqaga qaytarish - Rol tanlashga
+    const backToRoleBtn = document.getElementById('back-to-role-btn');
+    if (backToRoleBtn) {
+        backToRoleBtn.onclick = () => {
+            console.log(`⬅️ [WEB] "Orqaga (Rol tanlash)" tugmasi bosildi`);
+            // Filiallar va brendlarni yashirish
+            const locationsGroup = document.getElementById('approval-locations-group');
+            const brandsGroup = document.getElementById('approval-brands-group');
+            if (locationsGroup) locationsGroup.style.display = 'none';
+            if (brandsGroup) brandsGroup.style.display = 'none';
+            
+            // Rol select'ni reset qilish
+            const roleSelect = document.getElementById('approval-role');
+            if (roleSelect) {
+                roleSelect.value = '';
+                console.log(`✅ [WEB] Rol select reset qilindi`);
+            }
+            
+            // State'ni tozalash
+            window.approvalSkipLocations = false;
+            window.approvalSkipBrands = false;
+            
+            // Checkboxlarni tozalash
             document.querySelectorAll('#approval-locations-checkbox-list input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
             });
@@ -888,12 +965,32 @@ function setupApprovalSkipButtons() {
                 cb.checked = false;
             });
             
-            // Submit qilish
-            const form = document.getElementById('approval-form');
-            if (form) {
-                const event = new Event('submit', { bubbles: true, cancelable: true });
-                form.dispatchEvent(event);
-            }
+            console.log(`✅ [WEB] Orqaga qaytarildi: Rol tanlash bosqichiga`);
+        };
+    }
+    
+    // Orqaga qaytarish - Filiallar tanlashga
+    const backToLocationsBtn = document.getElementById('back-to-locations-btn');
+    if (backToLocationsBtn) {
+        backToLocationsBtn.onclick = () => {
+            console.log(`⬅️ [WEB] "Orqaga (Filiallar)" tugmasi bosildi`);
+            // Brendlarni yashirish
+            const brandsGroup = document.getElementById('approval-brands-group');
+            if (brandsGroup) brandsGroup.style.display = 'none';
+            
+            // Filiallarni ko'rsatish
+            const locationsGroup = document.getElementById('approval-locations-group');
+            if (locationsGroup) locationsGroup.style.display = 'block';
+            
+            // State'ni tozalash
+            window.approvalSkipBrands = false;
+            
+            // Brend checkboxlarni tozalash
+            document.querySelectorAll('#approval-brands-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            
+            console.log(`✅ [WEB] Orqaga qaytarildi: Filiallar tanlash bosqichiga`);
         };
     }
 }
@@ -902,6 +999,8 @@ export async function submitUserApproval(e) {
     e.preventDefault();
     const userId = DOM.approvalUserIdInput.value;
     const role = DOM.approvalRoleSelect.value;
+    
+    console.log(`📝 [WEB] Foydalanuvchi tasdiqlash formasi yuborilmoqda. User ID: ${userId}, Role: ${role}`);
     
     // Rol talablarini state'dan olish
     const roleData = state.roles.find(r => r.role_name === role);
@@ -919,6 +1018,12 @@ export async function submitUserApproval(e) {
             : null)  // null = belgilanmagan
         : null;
     
+    console.log(`🔍 [WEB] Rol talablari tekshirilmoqda.`);
+    console.log(`   - requires_locations: ${isLocationsRequired} (${typeof isLocationsRequired})`);
+    console.log(`   - requires_brands: ${isBrandsRequired} (${typeof isBrandsRequired})`);
+    console.log(`   - approvalSkipLocations: ${window.approvalSkipLocations}`);
+    console.log(`   - approvalSkipBrands: ${window.approvalSkipBrands}`);
+    
     const data = {
         role: role,
         locations: [],
@@ -932,11 +1037,25 @@ export async function submitUserApproval(e) {
         if (!window.approvalSkipLocations) {
             data.locations = Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
                 .map(cb => cb.value);
+            console.log(`✅ [WEB] Filiallar belgilanmagan (null) - tanlanganlar yuborilmoqda: ${data.locations.length} ta`);
+        } else {
+            console.log(`⏭️ [WEB] Filiallar belgilanmagan (null) - skip qilindi, bo'sh array yuborilmoqda`);
         }
-    } else if (isLocationsRequired) {
+    } else if (isLocationsRequired === true) {
         // Belgilangan va majburiy
         data.locations = Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
             .map(cb => cb.value);
+        console.log(`✅ [WEB] Filiallar majburiy (true) - tanlanganlar yuborilmoqda: ${data.locations.length} ta`);
+        
+        // Validatsiya: agar majburiy bo'lsa va tanlanmagan bo'lsa, xatolik
+        if (data.locations.length === 0) {
+            console.log(`❌ [WEB] Validatsiya xatosi: Filiallar majburiy, lekin tanlanmagan`);
+            showToast(`"${role}" roli uchun kamida bitta filial tanlanishi shart.`, true);
+            return;
+        }
+    } else {
+        // false - filiallar kerak emas
+        console.log(`✅ [WEB] Filiallar kerak emas (false)`);
     }
     
     if (isBrandsRequired === null) {
@@ -944,12 +1063,28 @@ export async function submitUserApproval(e) {
         if (!window.approvalSkipBrands) {
             data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
                 .map(cb => parseInt(cb.value));
+            console.log(`✅ [WEB] Brendlar belgilanmagan (null) - tanlanganlar yuborilmoqda: ${data.brands.length} ta`);
+        } else {
+            console.log(`⏭️ [WEB] Brendlar belgilanmagan (null) - skip qilindi, bo'sh array yuborilmoqda`);
         }
-    } else if (isBrandsRequired) {
+    } else if (isBrandsRequired === true) {
         // Belgilangan va majburiy
         data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
             .map(cb => parseInt(cb.value));
+        console.log(`✅ [WEB] Brendlar majburiy (true) - tanlanganlar yuborilmoqda: ${data.brands.length} ta`);
+        
+        // Validatsiya: agar majburiy bo'lsa va tanlanmagan bo'lsa, xatolik
+        if (data.brands.length === 0) {
+            console.log(`❌ [WEB] Validatsiya xatosi: Brendlar majburiy, lekin tanlanmagan`);
+            showToast(`"${role}" roli uchun kamida bitta brend tanlanishi shart.`, true);
+            return;
+        }
+    } else {
+        // false - brendlar kerak emas
+        console.log(`✅ [WEB] Brendlar kerak emas (false)`);
     }
+    
+    console.log(`📤 [WEB] API'ga yuborilmoqda. Data:`, JSON.stringify(data, null, 2));
 
     try {
         const res = await safeFetch(`/api/users/${userId}/approve`, {
@@ -957,9 +1092,14 @@ export async function submitUserApproval(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (!res || !res.ok) throw new Error((await res.json()).message);
+        if (!res || !res.ok) {
+            const errorData = await res.json();
+            console.error(`❌ [WEB] API xatolik:`, errorData);
+            throw new Error(errorData.message);
+        }
         
         const result = await res.json();
+        console.log(`✅ [WEB] Foydalanuvchi muvaffaqiyatli tasdiqlandi. Result:`, result);
         showToast(result.message);
         
         const [pendingRes, usersRes] = await Promise.all([
@@ -977,8 +1117,13 @@ export async function submitUserApproval(e) {
             if (activeTab) renderUsersByStatus(activeTab);
         }
         
+        // State'ni tozalash
+        window.approvalSkipLocations = false;
+        window.approvalSkipBrands = false;
+        
         DOM.approvalModal.classList.add('hidden');
     } catch (error) {
+        console.error(`❌ [WEB] Tasdiqlashda xatolik:`, error);
         showToast(error.message, true);
     }
 }

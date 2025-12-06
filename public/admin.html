@@ -2858,9 +2858,14 @@
                         <div class="form-group" id="approval-locations-group" style="display: none;">
                             <label>Biriktirilgan filiallar:</label>
                             <div class="checkbox-grid" id="approval-locations-checkbox-list"></div>
-                            <button type="button" id="skip-locations-btn" class="btn btn-link" style="display: none; margin-top: 10px; padding: 5px 10px; font-size: 13px; color: rgba(255,255,255,0.6);">
-                                <i data-feather="skip-forward"></i> O'tkazib yuborish
-                            </button>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button type="button" id="skip-locations-btn" class="btn btn-link" style="display: none; padding: 5px 10px; font-size: 13px; color: rgba(255,255,255,0.6);">
+                                    <i data-feather="skip-forward"></i> O'tkazib yuborish
+                                </button>
+                                <button type="button" id="back-to-role-btn" class="btn btn-link" style="display: none; padding: 5px 10px; font-size: 13px; color: rgba(255,255,255,0.6);">
+                                    <i data-feather="arrow-left"></i> Orqaga (Rol tanlash)
+                                </button>
+                            </div>
                         </div>
                         <div class="form-group" id="approval-brands-group" style="display: none;">
                             <label>Biriktirilgan brendlar <span style="color: var(--red-color);">*</span></label>
@@ -2870,9 +2875,14 @@
                             <div id="approval-brands-list" style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2);">
                                 <!-- JS orqali to'ldiriladi -->
                             </div>
-                            <button type="button" id="skip-brands-btn" class="btn btn-link" style="display: none; margin-top: 10px; padding: 5px 10px; font-size: 13px; color: rgba(255,255,255,0.6);">
-                                <i data-feather="skip-forward"></i> O'tkazib yuborish
-                            </button>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button type="button" id="skip-brands-btn" class="btn btn-link" style="display: none; padding: 5px 10px; font-size: 13px; color: rgba(255,255,255,0.6);">
+                                    <i data-feather="skip-forward"></i> O'tkazib yuborish
+                                </button>
+                                <button type="button" id="back-to-locations-btn" class="btn btn-link" style="display: none; padding: 5px 10px; font-size: 13px; color: rgba(255,255,255,0.6);">
+                                    <i data-feather="arrow-left"></i> Orqaga (Filiallar)
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
