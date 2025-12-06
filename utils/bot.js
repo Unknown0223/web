@@ -996,10 +996,57 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
                             
-                            const brandButtons = allBrands.map(brand => ([{ 
-                                text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                callback_data: `brand_${brand.id}` 
-                            }]));
+                            // Brendlar ro'yxatini formatlash (filiallar kabi)
+                            let brandButtons = [];
+                            
+                            if (allBrands.length <= 5) {
+                                // 5 tagacha - list formatida (har bir qatorda 1 ta)
+                                console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                brandButtons = allBrands.map(brand => ([{ 
+                                    text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                                    callback_data: `brand_${brand.id}` 
+                                }]));
+                            } else if (allBrands.length <= 8) {
+                                // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
+                                console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                for (let i = 0; i < allBrands.length; i += 2) {
+                                    const row = [];
+                                    row.push({ 
+                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                        callback_data: `brand_${allBrands[i].id}` 
+                                    });
+                                    if (i + 1 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 1].id}` 
+                                        });
+                                    }
+                                    brandButtons.push(row);
+                                }
+                            } else {
+                                // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
+                                console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                for (let i = 0; i < allBrands.length; i += 3) {
+                                    const row = [];
+                                    row.push({ 
+                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                        callback_data: `brand_${allBrands[i].id}` 
+                                    });
+                                    if (i + 1 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 1].id}` 
+                                        });
+                                    }
+                                    if (i + 2 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 2].id}` 
+                                        });
+                                    }
+                                    brandButtons.push(row);
+                                }
+                            }
                             
                         const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                         if (canSkipBrands) {
@@ -1107,10 +1154,57 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
                         console.log(`🏷️ [BOT] Rol sozlamalari: requires_brands=${isBrandsRequired}, requiresBrands=${requiresBrands}, canSkipBrands=${canSkipBrands}`);
                         
-                        const brandButtons = allBrands.map(brand => ([{ 
-                            text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                            callback_data: `brand_${brand.id}` 
-                        }]));
+                        // Brendlar ro'yxatini formatlash (filiallar kabi)
+                        let brandButtons = [];
+                        
+                        if (allBrands.length <= 5) {
+                            // 5 tagacha - list formatida (har bir qatorda 1 ta)
+                            console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                            brandButtons = allBrands.map(brand => ([{ 
+                                text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                                callback_data: `brand_${brand.id}` 
+                            }]));
+                        } else if (allBrands.length <= 8) {
+                            // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
+                            console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                            for (let i = 0; i < allBrands.length; i += 2) {
+                                const row = [];
+                                row.push({ 
+                                    text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                    callback_data: `brand_${allBrands[i].id}` 
+                                });
+                                if (i + 1 < allBrands.length) {
+                                    row.push({ 
+                                        text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                        callback_data: `brand_${allBrands[i + 1].id}` 
+                                    });
+                                }
+                                brandButtons.push(row);
+                            }
+                        } else {
+                            // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
+                            console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                            for (let i = 0; i < allBrands.length; i += 3) {
+                                const row = [];
+                                row.push({ 
+                                    text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                    callback_data: `brand_${allBrands[i].id}` 
+                                });
+                                if (i + 1 < allBrands.length) {
+                                    row.push({ 
+                                        text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                        callback_data: `brand_${allBrands[i + 1].id}` 
+                                    });
+                                }
+                                if (i + 2 < allBrands.length) {
+                                    row.push({ 
+                                        text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
+                                        callback_data: `brand_${allBrands[i + 2].id}` 
+                                    });
+                                }
+                                brandButtons.push(row);
+                            }
+                        }
                         
                         const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                         if (canSkipBrands) {
@@ -1311,10 +1405,57 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
                             console.log(`🏷️ [BOT] Rol sozlamalari: requires_brands=${isBrandsRequired}, requiresBrands=${requiresBrands}, canSkipBrands=${canSkipBrands}`);
                             
-                            const brandButtons = allBrands.map(brand => ([{ 
-                                text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                callback_data: `brand_${brand.id}` 
-                            }]));
+                            // Brendlar ro'yxatini formatlash (filiallar kabi)
+                            let brandButtons = [];
+                            
+                            if (allBrands.length <= 5) {
+                                // 5 tagacha - list formatida (har bir qatorda 1 ta)
+                                console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                brandButtons = allBrands.map(brand => ([{ 
+                                    text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                                    callback_data: `brand_${brand.id}` 
+                                }]));
+                            } else if (allBrands.length <= 8) {
+                                // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
+                                console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                for (let i = 0; i < allBrands.length; i += 2) {
+                                    const row = [];
+                                    row.push({ 
+                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                        callback_data: `brand_${allBrands[i].id}` 
+                                    });
+                                    if (i + 1 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 1].id}` 
+                                        });
+                                    }
+                                    brandButtons.push(row);
+                                }
+                            } else {
+                                // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
+                                console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                for (let i = 0; i < allBrands.length; i += 3) {
+                                    const row = [];
+                                    row.push({ 
+                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                        callback_data: `brand_${allBrands[i].id}` 
+                                    });
+                                    if (i + 1 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 1].id}` 
+                                        });
+                                    }
+                                    if (i + 2 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 2].id}` 
+                                        });
+                                    }
+                                    brandButtons.push(row);
+                                }
+                            }
                             
                             const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                             if (canSkipBrands) {
@@ -1451,10 +1592,57 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             const canSkipBrands = userStates[adminChatId].canSkipBrands || false;
                             console.log(`🏷️ [BOT] Rol sozlamalari: canSkipBrands=${canSkipBrands}`);
                             
-                            const brandButtons = allBrands.map(brand => ([{ 
-                                text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                                callback_data: `brand_${brand.id}` 
-                            }]));
+                            // Brendlar ro'yxatini formatlash (filiallar kabi)
+                            let brandButtons = [];
+                            
+                            if (allBrands.length <= 5) {
+                                // 5 tagacha - list formatida (har bir qatorda 1 ta)
+                                console.log(`📋 [BOT] Brendlar list formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                brandButtons = allBrands.map(brand => ([{ 
+                                    text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
+                                    callback_data: `brand_${brand.id}` 
+                                }]));
+                            } else if (allBrands.length <= 8) {
+                                // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
+                                console.log(`📋 [BOT] Brendlar 2 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                for (let i = 0; i < allBrands.length; i += 2) {
+                                    const row = [];
+                                    row.push({ 
+                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                        callback_data: `brand_${allBrands[i].id}` 
+                                    });
+                                    if (i + 1 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 1].id}` 
+                                        });
+                                    }
+                                    brandButtons.push(row);
+                                }
+                            } else {
+                                // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
+                                console.log(`📋 [BOT] Brendlar 3 ustunli grid formatida ko'rsatilmoqda (${allBrands.length} ta)`);
+                                for (let i = 0; i < allBrands.length; i += 3) {
+                                    const row = [];
+                                    row.push({ 
+                                        text: `${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`, 
+                                        callback_data: `brand_${allBrands[i].id}` 
+                                    });
+                                    if (i + 1 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 1].id}` 
+                                        });
+                                    }
+                                    if (i + 2 < allBrands.length) {
+                                        row.push({ 
+                                            text: `${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`, 
+                                            callback_data: `brand_${allBrands[i + 2].id}` 
+                                        });
+                                    }
+                                    brandButtons.push(row);
+                                }
+                            }
                             
                             const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
                             if (canSkipBrands) {
@@ -1869,10 +2057,54 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
                         }
                         
-                        const brandButtons = allBrands.map(brand => ([{ 
-                            text: `${selectedBrands.includes(brand.id) ? '✔️ ' : ''}${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
-                            callback_data: `brand_${brand.id}` 
-                        }]));
+                        // Brendlar ro'yxatini formatlash (filiallar kabi, tanlanganlar bilan)
+                        let brandButtons = [];
+                        
+                        if (allBrands.length <= 5) {
+                            // 5 tagacha - list formatida (har bir qatorda 1 ta)
+                            brandButtons = allBrands.map(brand => ([{ 
+                                text: `${selectedBrands.includes(brand.id) ? '✔️ ' : ''}${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`,
+                                callback_data: `brand_${brand.id}` 
+                            }]));
+                        } else if (allBrands.length <= 8) {
+                            // 8 tagacha - grid 2 ustunli (har bir qatorda 2 ta)
+                            for (let i = 0; i < allBrands.length; i += 2) {
+                                const row = [];
+                                row.push({ 
+                                    text: `${selectedBrands.includes(allBrands[i].id) ? '✔️ ' : ''}${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`,
+                                    callback_data: `brand_${allBrands[i].id}` 
+                                });
+                                if (i + 1 < allBrands.length) {
+                                    row.push({ 
+                                        text: `${selectedBrands.includes(allBrands[i + 1].id) ? '✔️ ' : ''}${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`,
+                                        callback_data: `brand_${allBrands[i + 1].id}` 
+                                    });
+                                }
+                                brandButtons.push(row);
+                            }
+                        } else {
+                            // Undan oshiq - grid 3 ustunli (har bir qatorda 3 ta)
+                            for (let i = 0; i < allBrands.length; i += 3) {
+                                const row = [];
+                                row.push({ 
+                                    text: `${selectedBrands.includes(allBrands[i].id) ? '✔️ ' : ''}${allBrands[i].emoji || '🏷️'} ${escapeHtml(allBrands[i].name)}`,
+                                    callback_data: `brand_${allBrands[i].id}` 
+                                });
+                                if (i + 1 < allBrands.length) {
+                                    row.push({ 
+                                        text: `${selectedBrands.includes(allBrands[i + 1].id) ? '✔️ ' : ''}${allBrands[i + 1].emoji || '🏷️'} ${escapeHtml(allBrands[i + 1].name)}`,
+                                        callback_data: `brand_${allBrands[i + 1].id}` 
+                                    });
+                                }
+                                if (i + 2 < allBrands.length) {
+                                    row.push({ 
+                                        text: `${selectedBrands.includes(allBrands[i + 2].id) ? '✔️ ' : ''}${allBrands[i + 2].emoji || '🏷️'} ${escapeHtml(allBrands[i + 2].name)}`,
+                                        callback_data: `brand_${allBrands[i + 2].id}` 
+                                    });
+                                }
+                                brandButtons.push(row);
+                            }
+                        }
                         
                         const keyboard = {
                             inline_keyboard: [
