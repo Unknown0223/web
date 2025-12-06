@@ -2984,6 +2984,66 @@
 
     <div id="toast-notification" class="toast hidden"></div>
     
+    <!-- Import Jadval Tanlash Modal -->
+    <div id="import-tables-modal" class="modal hidden" style="z-index: 1200;">
+        <div class="modal-content" style="max-width: 900px; max-height: 85vh;">
+            <button class="close-modal-btn" data-target="import-tables-modal">
+                <i data-feather="x"></i>
+            </button>
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i data-feather="database"></i>
+                    <span>📥 Import Qilish - Jadval Tanlash</span>
+                </h3>
+            </div>
+            <div class="modal-body" style="padding: 25px 30px; overflow-y: auto; max-height: calc(85vh - 150px);">
+                <div id="import-file-summary" style="margin-bottom: 25px; padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 10px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <i data-feather="file-text" style="width: 20px; height: 20px;"></i>
+                        <strong style="color: #667eea;">Fayl:</strong>
+                        <span id="import-file-name" style="color: #fff;"></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i data-feather="info" style="width: 20px; height: 20px;"></i>
+                        <span style="color: rgba(255, 255, 255, 0.8);">
+                            Quyidagi jadvallardan import qilmoqchi bo'lganlarni tanlang. Hech narsa tanlanmasa, barcha jadvallar import qilinadi.
+                        </span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+                    <button id="select-all-tables-btn" class="btn" style="padding: 8px 16px; font-size: 14px;">
+                        <i data-feather="check-square"></i> Barchasini tanlash
+                    </button>
+                    <button id="deselect-all-tables-btn" class="btn" style="padding: 8px 16px; font-size: 14px;">
+                        <i data-feather="square"></i> Barchasini bekor qilish
+                    </button>
+                    <span id="selected-tables-count" style="margin-left: auto; color: rgba(255, 255, 255, 0.7); font-size: 14px;">
+                        0 jadval tanlangan
+                    </span>
+                </div>
+                
+                <div id="import-tables-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                    <!-- Bu yerda jadvallar ro'yxati ko'rsatiladi -->
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 20px 30px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+                <div style="color: rgba(255, 255, 255, 0.6); font-size: 14px;">
+                    <i data-feather="alert-circle" style="width: 16px; height: 16px; margin-right: 5px;"></i>
+                    Tanlangan jadvallar import qilinadi
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="cancel-import-btn" class="btn" style="padding: 10px 20px;">
+                        <i data-feather="x"></i> Bekor qilish
+                    </button>
+                    <button id="confirm-import-btn" class="btn btn-primary" style="padding: 10px 25px;">
+                        <i data-feather="check"></i> Tasdiqlash va Import qilish
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.webdatarocks.com/latest/webdatarocks.toolbar.min.js"></script>
     <script src="https://cdn.webdatarocks.com/latest/webdatarocks.js"></script>

@@ -439,6 +439,223 @@ export async function exportFullDatabase() {
     }
 }
 
+// Import uchun global o'zgaruvchilar
+let currentImportData = null;
+let currentImportFile = null;
+
+/**
+ * Jadval nomlarini o'zbek tiliga tarjima qilish
+ */
+function getTableDisplayName(tableName) {
+    const translations = {
+        'users': '👥 Foydalanuvchilar',
+        'roles': '🎭 Rollar',
+        'permissions': '🔐 Huquqlar',
+        'role_permissions': '🔗 Rol-Huquq Bog\'lanishlari',
+        'user_permissions': '👤 Foydalanuvchi Huquqlari',
+        'user_locations': '📍 Foydalanuvchi Filiallari',
+        'user_brands': '🏷️ Foydalanuvchi Brendlari',
+        'reports': '📊 Hisobotlar',
+        'report_history': '📜 Hisobot Tarixi',
+        'settings': '⚙️ Sozlamalar',
+        'brands': '🏢 Brendlar',
+        'brand_locations': '📍 Brend Filiallari',
+        'pending_registrations': '⏳ Kutilayotgan Ro\'yxatdan O\'tishlar',
+        'audit_logs': '📋 Audit Jurnallari',
+        'password_change_requests': '🔑 Parol O\'zgartirish So\'rovlari',
+        'pivot_templates': '📐 Pivot Shablonlari',
+        'magic_links': '🔗 Magic Linklar',
+        'exchange_rates': '💱 Valyuta Kurslari',
+        'comparisons': '📈 Solishtirishlar',
+        'notifications': '🔔 Bildirishnomalar',
+        'branches': '🏪 Filiallar',
+        'products': '📦 Mahsulotlar',
+        'stocks': '📊 Ostatki',
+        'sales': '💰 Sotuvlar',
+        'ostatki_analysis': '📊 Ostatki Tahlili',
+        'ostatki_imports': '📥 Ostatki Importlari',
+        'blocked_filials': '🚫 Bloklangan Filiallar',
+        'imports_log': '📝 Import Jurnallari'
+    };
+    return translations[tableName] || `📋 ${tableName}`;
+}
+
+/**
+ * Jadval kategoriyalarini aniqlash
+ */
+function getTableCategory(tableName) {
+    if (['users', 'roles', 'permissions', 'role_permissions', 'user_permissions', 'user_locations', 'user_brands'].includes(tableName)) {
+        return 'Foydalanuvchilar va Huquqlar';
+    }
+    if (['reports', 'report_history', 'pivot_templates'].includes(tableName)) {
+        return 'Hisobotlar';
+    }
+    if (['settings', 'brands', 'brand_locations'].includes(tableName)) {
+        return 'Sozlamalar va Brendlar';
+    }
+    if (['audit_logs', 'password_change_requests', 'magic_links'].includes(tableName)) {
+        return 'Xavfsizlik va Audit';
+    }
+    if (['exchange_rates', 'comparisons', 'notifications'].includes(tableName)) {
+        return 'Qo\'shimcha Funksiyalar';
+    }
+    if (['branches', 'products', 'stocks', 'sales', 'ostatki_analysis', 'ostatki_imports', 'blocked_filials', 'imports_log'].includes(tableName)) {
+        return 'Filiallar va Mahsulotlar';
+    }
+    if (['pending_registrations'].includes(tableName)) {
+        return 'Ro\'yxatdan O\'tish';
+    }
+    return 'Boshqa';
+}
+
+/**
+ * Import modal oynasini ko'rsatish
+ */
+function showImportTablesModal(importData, fileName) {
+    currentImportData = importData;
+    currentImportFile = fileName;
+    
+    const modal = document.getElementById('import-tables-modal');
+    const fileNameEl = document.getElementById('import-file-name');
+    const tablesListEl = document.getElementById('import-tables-list');
+    
+    if (!modal || !fileNameEl || !tablesListEl) {
+        console.error('Import modal elementlari topilmadi');
+        return;
+    }
+    
+    fileNameEl.textContent = fileName;
+    
+    // Jadvallarni kategoriyalar bo'yicha guruhlash
+    const categories = {};
+    Object.keys(importData.data || {}).forEach(tableName => {
+        const category = getTableCategory(tableName);
+        if (!categories[category]) {
+            categories[category] = [];
+        }
+        categories[category].push(tableName);
+    });
+    
+    // Modal ichini to'ldirish
+    tablesListEl.innerHTML = '';
+    
+    Object.keys(categories).sort().forEach(category => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.style.gridColumn = '1 / -1';
+        categoryDiv.style.marginTop = '20px';
+        categoryDiv.style.marginBottom = '10px';
+        
+        const categoryTitle = document.createElement('h4');
+        categoryTitle.style.color = '#667eea';
+        categoryTitle.style.fontSize = '16px';
+        categoryTitle.style.marginBottom = '12px';
+        categoryTitle.style.paddingBottom = '8px';
+        categoryTitle.style.borderBottom = '2px solid rgba(102, 126, 234, 0.3)';
+        categoryTitle.textContent = category;
+        categoryDiv.appendChild(categoryTitle);
+        
+        const categoryGrid = document.createElement('div');
+        categoryGrid.style.display = 'grid';
+        categoryGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+        categoryGrid.style.gap = '12px';
+        
+        categories[category].sort().forEach(tableName => {
+            const count = Array.isArray(importData.data[tableName]) ? importData.data[tableName].length : 0;
+            
+            const tableCard = document.createElement('label');
+            tableCard.style.display = 'flex';
+            tableCard.style.alignItems = 'center';
+            tableCard.style.padding = '15px';
+            tableCard.style.background = 'rgba(255, 255, 255, 0.03)';
+            tableCard.style.border = '2px solid rgba(255, 255, 255, 0.1)';
+            tableCard.style.borderRadius = '10px';
+            tableCard.style.cursor = 'pointer';
+            tableCard.style.transition = 'all 0.2s';
+            tableCard.style.position = 'relative';
+            
+            tableCard.addEventListener('mouseenter', () => {
+                tableCard.style.background = 'rgba(102, 126, 234, 0.1)';
+                tableCard.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+            });
+            
+            tableCard.addEventListener('mouseleave', () => {
+                const checkbox = tableCard.querySelector('input[type="checkbox"]');
+                if (!checkbox.checked) {
+                    tableCard.style.background = 'rgba(255, 255, 255, 0.03)';
+                    tableCard.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }
+            });
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'import-table';
+            checkbox.value = tableName;
+            checkbox.checked = true; // Barchasi default tanlangan
+            checkbox.style.width = '20px';
+            checkbox.style.height = '20px';
+            checkbox.style.marginRight = '12px';
+            checkbox.style.cursor = 'pointer';
+            checkbox.style.accentColor = '#667eea';
+            
+            checkbox.addEventListener('change', () => {
+                updateSelectedCount();
+                if (checkbox.checked) {
+                    tableCard.style.background = 'rgba(102, 126, 234, 0.15)';
+                    tableCard.style.borderColor = '#667eea';
+                } else {
+                    tableCard.style.background = 'rgba(255, 255, 255, 0.03)';
+                    tableCard.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }
+            });
+            
+            const tableInfo = document.createElement('div');
+            tableInfo.style.flex = '1';
+            
+            const tableNameEl = document.createElement('div');
+            tableNameEl.style.color = '#fff';
+            tableNameEl.style.fontWeight = '600';
+            tableNameEl.style.marginBottom = '4px';
+            tableNameEl.textContent = getTableDisplayName(tableName);
+            
+            const tableCountEl = document.createElement('div');
+            tableCountEl.style.color = 'rgba(255, 255, 255, 0.6)';
+            tableCountEl.style.fontSize = '13px';
+            tableCountEl.textContent = `${count} ta yozuv`;
+            
+            tableInfo.appendChild(tableNameEl);
+            tableInfo.appendChild(tableCountEl);
+            
+            tableCard.appendChild(checkbox);
+            tableCard.appendChild(tableInfo);
+            
+            categoryGrid.appendChild(tableCard);
+        });
+        
+        categoryDiv.appendChild(categoryGrid);
+        tablesListEl.appendChild(categoryDiv);
+    });
+    
+    // Modal oynani ko'rsatish
+    modal.classList.remove('hidden');
+    if (window.feather) {
+        window.feather.replace();
+    }
+    
+    updateSelectedCount();
+}
+
+/**
+ * Tanlangan jadvallar sonini yangilash
+ */
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('input[name="import-table"]:checked');
+    const countEl = document.getElementById('selected-tables-count');
+    if (countEl) {
+        const total = document.querySelectorAll('input[name="import-table"]').length;
+        countEl.textContent = `${checkboxes.length} / ${total} jadval tanlangan`;
+    }
+}
+
 /**
  * To'liq ma'lumotlar bazasini import qilish
  */
@@ -453,13 +670,50 @@ export async function importFullDatabase(file) {
         return;
     }
     
+    try {
+        // Faylni o'qish
+        showToast('📄 Fayl o\'qilmoqda...');
+        const fileText = await file.text();
+        const importData = JSON.parse(fileText);
+        
+        // Validatsiya
+        if (!importData.data) {
+            throw new Error('Noto\'g\'ri fayl formati! "data" maydoni topilmadi.');
+        }
+        
+        // Modal oynani ko'rsatish
+        showImportTablesModal(importData, file.name);
+        
+    } catch (error) {
+        showToast('❌ Faylni o\'qishda xatolik: ' + error.message, true);
+    }
+}
+
+/**
+ * Tanlangan jadvallarni import qilish
+ */
+export async function confirmImportSelectedTables() {
+    if (!currentImportData) {
+        showToast('❌ Import ma\'lumotlari topilmadi!', true);
+        return;
+    }
+    
+    const checkboxes = document.querySelectorAll('input[name="import-table"]:checked');
+    const selectedTables = Array.from(checkboxes).map(cb => cb.value);
+    
+    // Agar hech narsa tanlanmagan bo'lsa, barchasini import qilish
+    const tablesToImport = selectedTables.length > 0 ? selectedTables : Object.keys(currentImportData.data || {});
+    
     const confirmed = await showConfirmDialog({
-        title: '⚠️ DIQQAT! To\'liq Database Import',
+        title: '⚠️ DIQQAT! Database Import',
         message: `
-            <strong style="color: #e74c3c;">Bu amal hozirgi barcha ma'lumotlarni o'chiradi!</strong><br><br>
-            Import qilinadigan fayl: <strong>${file.name}</strong><br>
-            Hajmi: <strong>${(file.size / 1024).toFixed(2)} KB</strong><br><br>
-            Barcha foydalanuvchilar, hisobotlar, sozlamalar almashtiriladi. Davom etasizmi?
+            <strong style="color: #e74c3c;">Bu amal tanlangan jadvallardagi hozirgi ma'lumotlarni o'chiradi!</strong><br><br>
+            Import qilinadigan jadvallar: <strong>${tablesToImport.length} ta</strong><br>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                ${tablesToImport.map(table => `<li>${getTableDisplayName(table)}</li>`).join('')}
+            </ul>
+            <br>
+            Davom etasizmi?
         `,
         confirmText: 'Ha, import qilish',
         cancelText: 'Bekor qilish',
@@ -469,19 +723,27 @@ export async function importFullDatabase(file) {
     
     if (!confirmed) return;
     
+    // Modal oynani yopish
+    const modal = document.getElementById('import-tables-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    
     try {
         showProgress('📤 Import jarayoni boshlandi...', 10);
         showToast('📤 Ma\'lumotlar bazasi import qilinmoqda...');
         
-        // Faylni o'qish
-        showProgress('📄 Fayl o\'qilmoqda...', 30);
-        const fileText = await file.text();
-        const importData = JSON.parse(fileText);
+        // Tanlangan jadvallarni filtrlash
+        const filteredData = {
+            ...currentImportData,
+            data: {}
+        };
         
-        // Validatsiya
-        if (!importData.data) {
-            throw new Error('Noto\'g\'ri fayl formati! "data" maydoni topilmadi.');
-        }
+        tablesToImport.forEach(tableName => {
+            if (currentImportData.data[tableName]) {
+                filteredData.data[tableName] = currentImportData.data[tableName];
+            }
+        });
         
         showProgress('🔄 Ma\'lumotlar bazasiga yuklash...', 50);
         
@@ -489,7 +751,7 @@ export async function importFullDatabase(file) {
         const response = await safeFetch('/api/admin/import-full-db', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(importData)
+            body: JSON.stringify(filteredData)
         });
         
         if (!response || !response.ok) {
@@ -513,7 +775,6 @@ export async function importFullDatabase(file) {
         
     } catch (error) {
         hideProgress();
-        // console.error('Import xatolik:', error);
         showToast('❌ Import qilishda xatolik: ' + error.message, true);
     }
 }
@@ -589,6 +850,70 @@ export function initExportImport() {
                 }, 3000);
             }
         });
+    }
+    
+    // Import modal oyna event listenerlari
+    const importModal = document.getElementById('import-tables-modal');
+    if (importModal) {
+        // Modal yopish
+        const cancelBtn = document.getElementById('cancel-import-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                importModal.classList.add('hidden');
+                currentImportData = null;
+                currentImportFile = null;
+            });
+        }
+        
+        // Modal yopish (X tugmasi)
+        const closeBtn = importModal.querySelector('[data-target="import-tables-modal"]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                importModal.classList.add('hidden');
+                currentImportData = null;
+                currentImportFile = null;
+            });
+        }
+        
+        // Tasdiqlash tugmasi
+        const confirmBtn = document.getElementById('confirm-import-btn');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', confirmImportSelectedTables);
+        }
+        
+        // Barchasini tanlash
+        const selectAllBtn = document.getElementById('select-all-tables-btn');
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                const checkboxes = document.querySelectorAll('input[name="import-table"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    const card = cb.closest('label');
+                    if (card) {
+                        card.style.background = 'rgba(102, 126, 234, 0.15)';
+                        card.style.borderColor = '#667eea';
+                    }
+                });
+                updateSelectedCount();
+            });
+        }
+        
+        // Barchasini bekor qilish
+        const deselectAllBtn = document.getElementById('deselect-all-tables-btn');
+        if (deselectAllBtn) {
+            deselectAllBtn.addEventListener('click', () => {
+                const checkboxes = document.querySelectorAll('input[name="import-table"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    const card = cb.closest('label');
+                    if (card) {
+                        card.style.background = 'rgba(255, 255, 255, 0.03)';
+                        card.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    }
+                });
+                updateSelectedCount();
+            });
+        }
     }
 }
 
