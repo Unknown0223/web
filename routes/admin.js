@@ -52,47 +52,91 @@ router.get('/export-full-db', async (req, res) => {
     try {
         console.log('📥 To\'liq database export boshlandi...');
         
-        // Barcha jadvallardan ma'lumot olish
-        const users = await db('users').select('*');
-        const reports = await db('reports').select('*');
-        const audit_logs = await db('audit_logs').select('*');
-        const roles = await db('roles').select('*');
-        const role_permissions = await db('role_permissions').select('*');
-        const settings = await db('settings').select('*');
-        const brands = await db('brands').select('*');
-        const pending_registrations = await db('pending_registrations').select('*');
+        // Barcha jadvallardan ma'lumot olish (to'liq ro'yxat)
+        const tables = {
+            // Asosiy jadvallar
+            users: await db('users').select('*'),
+            roles: await db('roles').select('*'),
+            permissions: await db('permissions').select('*').catch(() => []),
+            role_permissions: await db('role_permissions').select('*'),
+            user_permissions: await db('user_permissions').select('*').catch(() => []),
+            
+            // Foydalanuvchi bog'lanishlar
+            user_locations: await db('user_locations').select('*'),
+            user_brands: await db('user_brands').select('*').catch(() => []),
+            
+            // Hisobotlar
+            reports: await db('reports').select('*'),
+            report_history: await db('report_history').select('*').catch(() => []),
+            
+            // Sozlamalar
+            settings: await db('settings').select('*'),
+            
+            // Brendlar
+            brands: await db('brands').select('*'),
+            brand_locations: await db('brand_locations').select('*').catch(() => []),
+            
+            // Ro'yxatdan o'tish
+            pending_registrations: await db('pending_registrations').select('*'),
+            
+            // Audit va xavfsizlik
+            audit_logs: await db('audit_logs').select('*'),
+            password_change_requests: await db('password_change_requests').select('*').catch(() => []),
+            
+            // Pivot va shablonlar
+            pivot_templates: await db('pivot_templates').select('*'),
+            
+            // Magic links
+            magic_links: await db('magic_links').select('*').catch(() => []),
+            
+            // Valyuta kurslari
+            exchange_rates: await db('exchange_rates').select('*').catch(() => []),
+            
+            // Solishtirish
+            comparisons: await db('comparisons').select('*').catch(() => []),
+            
+            // Bildirishnomalar
+            notifications: await db('notifications').select('*').catch(() => []),
+            
+            // Filiallar va mahsulotlar
+            branches: await db('branches').select('*').catch(() => []),
+            products: await db('products').select('*').catch(() => []),
+            stocks: await db('stocks').select('*').catch(() => []),
+            sales: await db('sales').select('*').catch(() => []),
+            
+            // Ostatki tahlil
+            ostatki_analysis: await db('ostatki_analysis').select('*').catch(() => []),
+            ostatki_imports: await db('ostatki_imports').select('*').catch(() => []),
+            
+            // Bloklangan filiallar
+            blocked_filials: await db('blocked_filials').select('*').catch(() => []),
+            
+            // Import loglari
+            imports_log: await db('imports_log').select('*').catch(() => [])
+        };
+        
+        // Counts hisoblash
+        const counts = {};
+        Object.keys(tables).forEach(tableName => {
+            counts[tableName] = Array.isArray(tables[tableName]) ? tables[tableName].length : 0;
+        });
         
         // JSON obyekt yaratish
         const fullExport = {
             export_info: {
-                version: '1.0',
+                version: '2.0',
                 exported_at: new Date().toISOString(),
                 exported_by: req.user?.username || 'admin',
-                description: 'To\'liq ma\'lumotlar bazasi eksporti'
+                description: 'To\'liq ma\'lumotlar bazasi eksporti - barcha jadvallar',
+                total_tables: Object.keys(tables).length,
+                total_records: Object.values(counts).reduce((sum, count) => sum + count, 0)
             },
-            data: {
-                users,
-                reports,
-                audit_logs,
-                roles,
-                role_permissions,
-                settings,
-                brands,
-                pending_registrations
-            },
-            counts: {
-                users: users.length,
-                reports: reports.length,
-                audit_logs: audit_logs.length,
-                roles: roles.length,
-                role_permissions: role_permissions.length,
-                settings: settings.length,
-                brands: brands.length,
-                pending_registrations: pending_registrations.length
-            }
+            data: tables,
+            counts: counts
         };
         
-        console.log(`✅ Export tayyor: ${JSON.stringify(fullExport.counts)}`);
+        console.log(`✅ Export tayyor: ${Object.keys(tables).length} jadval, ${fullExport.export_info.total_records} yozuv`);
+        console.log(`📊 Jadval statistikasi:`, counts);
         
         // JSON fayl sifatida yuborish
         const fileName = `full_database_export_${new Date().toISOString().split('T')[0]}.json`;
@@ -124,100 +168,181 @@ router.post('/import-full-db', async (req, res) => {
         const currentUserId = req.user?.id;
         
         // Transaction ichida import qilish (xatolik bo'lsa rollback)
+        const importCounts = {};
+        
         await db.transaction(async (trx) => {
             // 1. Barcha jadvallarni tozalash (sessiyalardan tashqari)
             console.log('🗑️ Eski ma\'lumotlarni tozalash...');
-            await trx('role_permissions').del();
-            await trx('audit_logs').del();
-            await trx('reports').del();
-            await trx('pending_registrations').del();
-            await trx('brands').del();
             
-            // Agar joriy user bor bo'lsa, uni saqlab qolish
+            // Bog'liq jadvallarni avval tozalash (foreign key cheklovlari tufayli)
+            const tablesToClear = [
+                'user_permissions', 'user_brands', 'user_locations',
+                'role_permissions', 'report_history', 'brand_locations',
+                'audit_logs', 'reports', 'pending_registrations',
+                'password_change_requests', 'pivot_templates', 'magic_links',
+                'comparisons', 'notifications', 'stocks', 'sales',
+                'ostatki_analysis', 'ostatki_imports', 'blocked_filials',
+                'imports_log', 'exchange_rates'
+            ];
+            
+            for (const table of tablesToClear) {
+                try {
+                    await trx(table).del();
+                    console.log(`  ✓ ${table} tozalandi`);
+                } catch (err) {
+                    // Jadval mavjud bo'lmasa, o'tkazib yuborish
+                    console.log(`  ⚠ ${table} jadvali topilmadi yoki xatolik: ${err.message}`);
+                }
+            }
+            
+            // Brands
+            try {
+                await trx('brands').del();
+            } catch (err) {
+                console.log(`  ⚠ brands jadvali xatolik: ${err.message}`);
+            }
+            
+            // Users (joriy adminni saqlab qolish)
             if (currentUserId) {
                 await trx('users').whereNot('id', currentUserId).del();
             } else {
-                await trx('users').del(); // Barchani o'chirish
+                await trx('users').del();
             }
             
-            await trx('settings').del();
+            // Settings
+            try {
+                await trx('settings').del();
+            } catch (err) {
+                console.log(`  ⚠ settings jadvali xatolik: ${err.message}`);
+            }
+            
+            // Products va Branches (agar mavjud bo'lsa)
+            try {
+                await trx('products').del();
+                await trx('branches').del();
+            } catch (err) {
+                console.log(`  ⚠ products/branches jadvallari xatolik: ${err.message}`);
+            }
+            
             // Roles ni to'liq o'chirmaymiz, faqat yangilaymiz
             
             // 2. Ma'lumotlarni import qilish
             console.log('📥 Yangi ma\'lumotlarni yuklash...');
             
-            // Users (joriy adminni saqlab qolish)
-            if (data.users && data.users.length > 0) {
-                let usersToImport;
-                if (currentUserId) {
-                    usersToImport = data.users.filter(u => u.id !== currentUserId);
-                } else {
-                    usersToImport = data.users;
+            // Helper funksiya - jadvalni import qilish
+            const importTable = async (tableName, tableData, options = {}) => {
+                if (!tableData || !Array.isArray(tableData) || tableData.length === 0) {
+                    importCounts[tableName] = 0;
+                    return;
                 }
                 
-                if (usersToImport.length > 0) {
-                    await trx('users').insert(usersToImport);
-                }
-            }
-            
-            // Reports
-            if (data.reports && data.reports.length > 0) {
-                await trx('reports').insert(data.reports);
-            }
-            
-            // Audit logs
-            if (data.audit_logs && data.audit_logs.length > 0) {
-                await trx('audit_logs').insert(data.audit_logs);
-            }
-            
-            // Roles (mavjud bo'lsa update, yo'q bo'lsa insert)
-            if (data.roles && data.roles.length > 0) {
-                for (const role of data.roles) {
-                    const existing = await trx('roles').where('role_name', role.role_name).first();
-                    if (existing) {
-                        await trx('roles').where('role_name', role.role_name).update(role);
+                try {
+                    if (options.upsert) {
+                        // Update yoki insert (roles uchun)
+                        for (const record of tableData) {
+                            const existing = await trx(tableName).where(options.upsert.where, record[options.upsert.key]).first();
+                            if (existing) {
+                                await trx(tableName).where(options.upsert.where, record[options.upsert.key]).update(record);
+                            } else {
+                                await trx(tableName).insert(record);
+                            }
+                        }
+                    } else if (options.filter) {
+                        // Filter qo'llash (users uchun)
+                        const filtered = options.filter(tableData);
+                        if (filtered.length > 0) {
+                            await trx(tableName).insert(filtered);
+                        }
+                        importCounts[tableName] = filtered.length;
                     } else {
-                        await trx('roles').insert(role);
+                        // Oddiy insert
+                        await trx(tableName).insert(tableData);
+                        importCounts[tableName] = tableData.length;
                     }
+                    console.log(`  ✓ ${tableName}: ${importCounts[tableName]} yozuv`);
+                } catch (err) {
+                    console.error(`  ❌ ${tableName} import xatolik:`, err.message);
+                    importCounts[tableName] = 0;
                 }
-            }
+            };
             
-            // Role permissions
-            if (data.role_permissions && data.role_permissions.length > 0) {
-                await trx('role_permissions').insert(data.role_permissions);
-            }
+            // Asosiy jadvallar
+            await importTable('users', data.users, {
+                filter: (users) => currentUserId ? users.filter(u => u.id !== currentUserId) : users
+            });
             
-            // Settings
-            if (data.settings && data.settings.length > 0) {
-                await trx('settings').insert(data.settings);
-            }
+            await importTable('roles', data.roles, {
+                upsert: { where: 'role_name', key: 'role_name' }
+            });
             
-            // Brands
-            if (data.brands && data.brands.length > 0) {
-                await trx('brands').insert(data.brands);
-            }
+            await importTable('permissions', data.permissions);
+            await importTable('role_permissions', data.role_permissions);
+            await importTable('user_permissions', data.user_permissions);
             
-            // Pending registrations
-            if (data.pending_registrations && data.pending_registrations.length > 0) {
-                await trx('pending_registrations').insert(data.pending_registrations);
-            }
+            // Foydalanuvchi bog'lanishlar
+            await importTable('user_locations', data.user_locations);
+            await importTable('user_brands', data.user_brands);
+            
+            // Hisobotlar
+            await importTable('reports', data.reports);
+            await importTable('report_history', data.report_history);
+            
+            // Sozlamalar
+            await importTable('settings', data.settings);
+            
+            // Brendlar
+            await importTable('brands', data.brands);
+            await importTable('brand_locations', data.brand_locations);
+            
+            // Ro'yxatdan o'tish
+            await importTable('pending_registrations', data.pending_registrations);
+            
+            // Audit va xavfsizlik
+            await importTable('audit_logs', data.audit_logs);
+            await importTable('password_change_requests', data.password_change_requests);
+            
+            // Pivot va shablonlar
+            await importTable('pivot_templates', data.pivot_templates);
+            
+            // Magic links
+            await importTable('magic_links', data.magic_links);
+            
+            // Valyuta kurslari
+            await importTable('exchange_rates', data.exchange_rates);
+            
+            // Solishtirish
+            await importTable('comparisons', data.comparisons);
+            
+            // Bildirishnomalar
+            await importTable('notifications', data.notifications);
+            
+            // Filiallar va mahsulotlar
+            await importTable('branches', data.branches);
+            await importTable('products', data.products);
+            await importTable('stocks', data.stocks);
+            await importTable('sales', data.sales);
+            
+            // Ostatki tahlil
+            await importTable('ostatki_analysis', data.ostatki_analysis);
+            await importTable('ostatki_imports', data.ostatki_imports);
+            
+            // Bloklangan filiallar
+            await importTable('blocked_filials', data.blocked_filials);
+            
+            // Import loglari
+            await importTable('imports_log', data.imports_log);
             
             console.log('✅ Import muvaffaqiyatli yakunlandi!');
         });
         
         // Import yakunlandi
-        const counts = {
-            users: data.users?.length || 0,
-            reports: data.reports?.length || 0,
-            audit_logs: data.audit_logs?.length || 0,
-            roles: data.roles?.length || 0,
-            settings: data.settings?.length || 0,
-            brands: data.brands?.length || 0
-        };
+        const totalImported = Object.values(importCounts).reduce((sum, count) => sum + count, 0);
         
         res.json({ 
             message: 'Ma\'lumotlar bazasi muvaffaqiyatli import qilindi!',
-            counts
+            counts: importCounts,
+            total_imported: totalImported,
+            tables_imported: Object.keys(importCounts).filter(key => importCounts[key] > 0).length
         });
         
     } catch (error) {
