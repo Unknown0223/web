@@ -414,8 +414,20 @@ export async function toggleLocationVisibilityForApprovalForm() {
     
     // Rol talablarini state'dan olish
     const roleData = state.roles.find(r => r.role_name === role);
-    const requiresLocations = roleData ? (roleData.requires_locations || false) : false;
-    const requiresBrands = roleData ? (roleData.requires_brands || false) : false;
+    
+    // Agar rol sozlamalarida belgilanmagan bo'lsa, default holatda ikkalasi ham ko'rsatiladi
+    // requires_locations va requires_brands undefined yoki null bo'lsa, ikkalasi ham true deb qabul qilinadi
+    const requiresLocations = roleData 
+        ? (roleData.requires_locations !== undefined && roleData.requires_locations !== null 
+            ? roleData.requires_locations 
+            : true)  // Default: true (belgilanmagan bo'lsa)
+        : true;  // Rol topilmasa ham default: true
+    
+    const requiresBrands = roleData 
+        ? (roleData.requires_brands !== undefined && roleData.requires_brands !== null 
+            ? roleData.requires_brands 
+            : true)  // Default: true (belgilanmagan bo'lsa)
+        : true;  // Rol topilmasa ham default: true
     
     const locationsDisplay = requiresLocations ? 'block' : 'none';
     const brandsDisplay = requiresBrands ? 'block' : 'none';
