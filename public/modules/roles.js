@@ -107,9 +107,123 @@ export function handleRoleSelection(e) {
     
     applyAllPermissionExclusions();
     
+    // Rol talablarini ko'rsatish va tahrirlash imkoniyatini qo'shish
+    showRoleRequirements(roleData);
+    
     // Admin uchun ham o'zgartirish imkoniyati qo'shildi
     DOM.permissionsPanel.classList.remove('disabled');
     // console.log('🎯 Role selection completed');
+}
+
+function showRoleRequirements(roleData) {
+    // Rol talablarini ko'rsatish uchun panel yaratish yoki yangilash
+    let requirementsPanel = document.getElementById('role-requirements-panel');
+    
+    if (!requirementsPanel) {
+        // Panel yaratish
+        requirementsPanel = document.createElement('div');
+        requirementsPanel.id = 'role-requirements-panel';
+        requirementsPanel.className = 'card';
+        requirementsPanel.style.marginTop = '20px';
+        requirementsPanel.innerHTML = `
+            <div class="card-header">
+                <h4>
+                    <i data-feather="settings"></i>
+                    <span>Rol Talablari</span>
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="role-requires-locations">
+                        Filiallar belgilanishi shart
+                    </label>
+                    <small class="form-text text-muted">
+                        Bu rol uchun foydalanuvchi tasdiqlanganda filiallar tanlanishi majburiy bo'ladi
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="role-requires-brands">
+                        Brendlar belgilanishi shart
+                    </label>
+                    <small class="form-text text-muted">
+                        Bu rol uchun foydalanuvchi tasdiqlanganda brendlar tanlanishi majburiy bo'ladi
+                    </small>
+                </div>
+                <button id="save-role-requirements-btn" class="btn btn-primary">
+                    <i data-feather="save"></i>
+                    <span>Talablarni Saqlash</span>
+                </button>
+            </div>
+        `;
+        
+        // Permissions panel'dan keyin qo'shish
+        const permissionsPanel = document.querySelector('.permissions-panel');
+        if (permissionsPanel && permissionsPanel.parentNode) {
+            permissionsPanel.parentNode.insertBefore(requirementsPanel, permissionsPanel.nextSibling);
+        }
+        
+        // Save button event listener
+        document.getElementById('save-role-requirements-btn').addEventListener('click', saveRoleRequirements);
+        
+        feather.replace();
+    }
+    
+    // Rol talablarini ko'rsatish
+    if (roleData) {
+        document.getElementById('role-requires-locations').checked = roleData.requires_locations || false;
+        document.getElementById('role-requires-brands').checked = roleData.requires_brands || false;
+    } else {
+        document.getElementById('role-requires-locations').checked = false;
+        document.getElementById('role-requires-brands').checked = false;
+    }
+    
+    requirementsPanel.style.display = 'block';
+}
+
+async function saveRoleRequirements() {
+    if (!state.currentEditingRole) return;
+    
+    const requiresLocations = document.getElementById('role-requires-locations').checked;
+    const requiresBrands = document.getElementById('role-requires-brands').checked;
+    
+    const btn = document.getElementById('save-role-requirements-btn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saqlanmoqda...';
+    
+    try {
+        const res = await safeFetch(`/api/roles/${state.currentEditingRole}/requirements`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                requires_locations: requiresLocations,
+                requires_brands: requiresBrands
+            })
+        });
+        
+        if (!res || !res.ok) throw new Error((await res.json()).message);
+        
+        const result = await res.json();
+        showToast(result.message);
+        
+        // State'ni yangilash
+        const roleIndex = state.roles.findIndex(r => r.role_name === state.currentEditingRole);
+        if (roleIndex > -1) {
+            state.roles[roleIndex].requires_locations = requiresLocations;
+            state.roles[roleIndex].requires_brands = requiresBrands;
+        }
+        
+        // UI'ni yangilash
+        showRoleRequirements(state.roles[roleIndex]);
+        
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 export async function saveRolePermissions() {

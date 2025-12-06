@@ -409,7 +409,7 @@ export function toggleLocationVisibilityForUserForm() {
     }
 }
 
-export function toggleLocationVisibilityForApprovalForm() {
+export async function toggleLocationVisibilityForApprovalForm() {
     const role = DOM.approvalRoleSelect?.value;
     
     // Rol talablarini state'dan olish
@@ -423,8 +423,55 @@ export function toggleLocationVisibilityForApprovalForm() {
     if (DOM.approvalLocationsGroup) DOM.approvalLocationsGroup.style.display = locationsDisplay;
     const approvalBrandsGroup = document.getElementById('approval-brands-group');
     if (approvalBrandsGroup) approvalBrandsGroup.style.display = brandsDisplay;
+    
+    // Filiallar kerak bo'lsa, filiallarni yuklash
+    if (locationsDisplay === 'block') {
+        await loadLocationsForApproval();
+    }
+    
+    // Brendlar kerak bo'lsa, brendlarni yuklash
     if (brandsDisplay === 'block') {
-        loadBrandsForUser();
+        await loadBrandsForApproval();
+    }
+}
+
+async function loadLocationsForApproval() {
+    try {
+        const settingsRes = await safeFetch('/api/settings');
+        if (!settingsRes.ok) throw new Error('Sozlamalarni yuklashda xatolik');
+        const settings = await settingsRes.json();
+        const locations = settings.app_settings?.locations || [];
+        
+        if (DOM.approvalLocationsCheckboxList) {
+            DOM.approvalLocationsCheckboxList.innerHTML = locations.map(loc => `
+                <label class="checkbox-item">
+                    <input type="checkbox" value="${loc}" name="approval-location">
+                    <span>${loc}</span>
+                </label>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Filiallarni yuklashda xatolik:', error);
+    }
+}
+
+async function loadBrandsForApproval() {
+    try {
+        const res = await safeFetch('/api/brands');
+        if (!res.ok) throw new Error('Brendlarni yuklashda xatolik');
+        const allBrands = await res.json();
+        
+        const approvalBrandsList = document.getElementById('approval-brands-list');
+        if (approvalBrandsList) {
+            approvalBrandsList.innerHTML = allBrands.map(brand => `
+                <label class="checkbox-item" style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" value="${brand.id}" name="approval-brand">
+                    <span>${brand.emoji || '🏷️'} ${brand.name}</span>
+                </label>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Brendlarni yuklashda xatolik:', error);
     }
 }
 
@@ -713,21 +760,36 @@ export function openApprovalModal(userId, username) {
             return `<option value="${r.role_name}">${displayName}</option>`;
         }).join('');
     toggleLocationVisibilityForApprovalForm();
+    // Rol tanlanganda filiallar va brendlar maydonlarini ko'rsatish
+    toggleLocationVisibilityForApprovalForm();
+    
     DOM.approvalModal.classList.remove('hidden');
 }
 
 export async function submitUserApproval(e) {
     e.preventDefault();
     const userId = DOM.approvalUserIdInput.value;
+    const role = DOM.approvalRoleSelect.value;
+    
+    // Rol talablarini state'dan olish
+    const roleData = state.roles.find(r => r.role_name === role);
+    const requiresLocations = roleData ? (roleData.requires_locations || false) : false;
+    const requiresBrands = roleData ? (roleData.requires_brands || false) : false;
+    
     const data = {
-        role: DOM.approvalRoleSelect.value,
-        locations: Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
-            .map(cb => cb.value),
+        role: role,
+        locations: [],
         brands: []
     };
     
-    // Manager va Admin uchun brendlarni qo'shish
-    if (data.role === 'manager' || data.role === 'admin') {
+    // Filiallar kerak bo'lsa, tanlangan filiallarni qo'shish
+    if (requiresLocations) {
+        data.locations = Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
+            .map(cb => cb.value);
+    }
+    
+    // Brendlar kerak bo'lsa, tanlangan brendlarni qo'shish
+    if (requiresBrands) {
         data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
             .map(cb => parseInt(cb.value));
     }
