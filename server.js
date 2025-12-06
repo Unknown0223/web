@@ -242,13 +242,14 @@ app.get('*', (req, res) => {
 });
 
 // WebSocket ulanishlarini boshqarish
-wss.on('connection', (ws) => {
-    console.log('✅ Yangi WebSocket ulanish o\'rnatildi');
+wss.on('connection', (ws, req) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    console.log(`✅ [WEBSOCKET] Yangi ulanish o'rnatildi. IP: ${clientIp}, URL: ${req.url}`);
     
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
-            console.log('WebSocket xabar qabul qilindi:', data);
+            console.log(`📨 [WEBSOCKET] Xabar qabul qilindi. Type: ${data.type}, IP: ${clientIp}`);
             
             // Xabarni barcha ulanishga yuborish (broadcast)
             wss.clients.forEach(client => {
@@ -257,16 +258,16 @@ wss.on('connection', (ws) => {
                 }
             });
         } catch (error) {
-            console.error('WebSocket xabarni qayta ishlashda xato:', error);
+            console.error(`❌ [WEBSOCKET] Xabarni qayta ishlashda xato:`, error);
         }
     });
     
-    ws.on('close', () => {
-        console.log('WebSocket ulanish yopildi');
+    ws.on('close', (code, reason) => {
+        console.log(`❌ [WEBSOCKET] Ulanish yopildi. Code: ${code}, Reason: ${reason || 'N/A'}, IP: ${clientIp}`);
     });
     
     ws.on('error', (error) => {
-        console.error('WebSocket xatosi:', error);
+        console.error(`❌ [WEBSOCKET] Xatolik. IP: ${clientIp}, Error:`, error.message);
     });
     
     // Ping/Pong uchun
@@ -274,6 +275,11 @@ wss.on('connection', (ws) => {
     ws.on('pong', () => {
         ws.isAlive = true;
     });
+});
+
+// WebSocket upgrade xatoliklarini boshqarish
+wss.on('error', (error) => {
+    console.error(`❌ [WEBSOCKET] Server xatosi:`, error);
 });
 
 // Har 30 soniyada ping yuborish (ulanish holatini tekshirish)
@@ -311,7 +317,10 @@ global.broadcastWebSocket = (type, payload) => {
         server.listen(PORT, '0.0.0.0', async () => {
             console.log(`✅ Server ${PORT} portida ishga tushdi`);
             console.log(`🌐 APP_BASE_URL: ${process.env.APP_BASE_URL}`);
-            console.log(`🔌 WebSocket server ws://localhost:${PORT}/ws da ishga tushdi`);
+            const wsProtocol = process.env.APP_BASE_URL?.startsWith('https://') ? 'wss' : 'ws';
+            const wsHost = process.env.APP_BASE_URL?.replace(/^https?:\/\//, '') || `localhost:${PORT}`;
+            console.log(`🔌 WebSocket server ${wsProtocol}://${wsHost}/ws da ishga tushdi`);
+            console.log(`🔌 [WEBSOCKET] WebSocket server tayyor. Path: /ws, Protocol: ${wsProtocol}`);
 
             // PM2 uchun ready signal
             if (process.send) {
