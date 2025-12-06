@@ -86,12 +86,32 @@ document.addEventListener('DOMContentLoaded', () => {
         submitButton.disabled = true;
         submitButton.innerHTML = 'Kirilmoqda... <span class="spinner"></span>';
 
+        // Timeout controller
+        const timeoutId = setTimeout(() => {
+            submitButton.innerHTML = 'Kutilmoqda... <span class="spinner"></span>';
+        }, 3000);
+
+        // Abort controller for request cancellation
+        const abortController = new AbortController();
+        const timeoutAbort = setTimeout(() => {
+            abortController.abort();
+        }, 30000); // 30 soniya timeout
+
         try {
+            const startTime = Date.now();
+            
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }), 
+                body: JSON.stringify({ username, password }),
+                signal: abortController.signal
             });
+
+            clearTimeout(timeoutAbort);
+            clearTimeout(timeoutId);
+            
+            const elapsedTime = Date.now() - startTime;
+            console.log(`✅ [LOGIN] Login muvaffaqiyatli. Vaqt: ${elapsedTime}ms`);
 
             const result = await response.json();
 
@@ -102,11 +122,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Agar server "ok" javobini bersa (200)
-            window.location.href = result.redirectUrl || '/';
+            // Qisqa kechikish bilan redirect (UX uchun)
+            submitButton.innerHTML = 'Muvaffaqiyatli! <span class="spinner"></span>';
+            setTimeout(() => {
+                window.location.href = result.redirectUrl || '/';
+            }, 300);
 
         } catch (error) {
+            clearTimeout(timeoutAbort);
+            clearTimeout(timeoutId);
+            
             // Agar server bilan umuman bog'lanib bo'lmasa yoki serverdan xatolik kelsa
-            errorMessage.textContent = error.message || 'Server bilan bog\'lanishda xatolik yuz berdi.';
+            if (error.name === 'AbortError') {
+                errorMessage.textContent = 'So\'rov vaqti tugadi. Iltimos, qayta urinib ko\'ring.';
+                console.error('❌ [LOGIN] Request timeout');
+            } else if (error.message) {
+                errorMessage.textContent = error.message;
+            } else {
+                errorMessage.textContent = 'Server bilan bog\'lanishda xatolik yuz berdi.';
+            }
             errorMessage.classList.add('active');
             
             // Agar serverdan secretWordRequired kelsa, xabar matnini o'zgartiramiz
@@ -114,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 errorMessage.textContent = error.message;
             }
             
-            console.error('Login jarayonida xatolik:', error);
+            console.error('❌ [LOGIN] Login jarayonida xatolik:', error);
         } finally {
             submitButton.disabled = false;
             submitButton.innerHTML = originalButtonText;

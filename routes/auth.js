@@ -133,20 +133,26 @@ router.post('/register', async (req, res) => {
 
 // POST /api/login - Tizimga kirish
 router.post('/login', async (req, res) => {
+    const startTime = Date.now();
     const { username, password } = req.body;
     const MAX_LOGIN_ATTEMPTS = 5;
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
+    console.log(`🔐 [LOGIN] Login so'rovi. Username: ${username}, IP: ${ipAddress}`);
+
     if (!username || !password) {
+        console.warn(`⚠️ [LOGIN] Login yoki parol kiritilmagan`);
         return res.status(400).json({ message: "Login va parol kiritilishi shart." });
     }
 
     try {
         const user = await userRepository.findByUsername(username);
+        console.log(`🔍 [LOGIN] User topildi: ${user ? `ID: ${user.id}, Status: ${user.status}` : 'topilmadi'}`);
 
         if (!user) {
-            await logAction(null, 'login_fail', 'user', null, { username, reason: 'User not found', ip: ipAddress, userAgent });
+            // Background'da log yozish
+            logAction(null, 'login_fail', 'user', null, { username, reason: 'User not found', ip: ipAddress, userAgent }).catch(err => console.error('Log yozishda xatolik:', err));
             return res.status(401).json({ message: "Login yoki parol noto'g'ri." });
         }
 
@@ -159,7 +165,8 @@ router.post('/login', async (req, res) => {
             } else if (user.status === 'archived') {
                 reason = "Bu akkaunt arxivlangan. Qayta tiklash uchun administrator bilan bog'laning.";
             }
-            await logAction(user.id, 'login_fail', 'user', user.id, { username, reason: `Account status: ${user.status}`, ip: ipAddress, userAgent });
+            // Background'da log yozish
+            logAction(user.id, 'login_fail', 'user', user.id, { username, reason: `Account status: ${user.status}`, ip: ipAddress, userAgent }).catch(err => console.error('Log yozishda xatolik:', err));
             return res.status(403).json({ message: reason });
         }
 
@@ -170,18 +177,25 @@ router.post('/login', async (req, res) => {
             
             if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
                 const lockMessage = `Parol ${MAX_LOGIN_ATTEMPTS} marta xato kiritilgani uchun bloklandi.`;
+                // Lock qilishni kutamiz (muhim)
                 await userRepository.lockUserForFailedAttempts(user.id, lockMessage);
-                await logAction(user.id, 'account_lock', 'user', user.id, { username, reason: 'Max login attempts exceeded', ip: ipAddress, userAgent });
-
-                await sendToTelegram({
-                    type: 'account_lock_alert',
-                    user_id: user.id,
-                    username: user.username
-                });
+                
+                // Background'da log va Telegram xabar
+                Promise.all([
+                    logAction(user.id, 'account_lock', 'user', user.id, { username, reason: 'Max login attempts exceeded', ip: ipAddress, userAgent }),
+                    sendToTelegram({
+                        type: 'account_lock_alert',
+                        user_id: user.id,
+                        username: user.username
+                    })
+                ]).catch(err => console.error('Background operatsiyalarda xatolik:', err));
+                
                 return res.status(403).json({ message: "Xavfsizlik tufayli akkauntingiz bloklandi. Administratorga xabar berildi." });
             } else {
+                // Increment'ni kutamiz (muhim)
                 await userRepository.incrementLoginAttempts(user.id, newAttempts);
-                await logAction(user.id, 'login_fail', 'user', user.id, { username, reason: 'Invalid password', ip: ipAddress, userAgent });
+                // Background'da log yozish
+                logAction(user.id, 'login_fail', 'user', user.id, { username, reason: 'Invalid password', ip: ipAddress, userAgent }).catch(err => console.error('Log yozishda xatolik:', err));
                 const attemptsLeft = MAX_LOGIN_ATTEMPTS - newAttempts;
                 return res.status(401).json({ message: `Login yoki parol noto'g'ri. Qolgan urinishlar soni: ${attemptsLeft}.` });
             }
@@ -197,31 +211,49 @@ router.post('/login', async (req, res) => {
             await db('users').where({ id: user.id }).update({ must_delete_creds: false });
         }
 
-        if (user.login_attempts > 0 || user.lock_reason) {
-            await userRepository.resetLoginAttempts(user.id);
-        }
+        // Barcha kerakli ma'lumotlarni parallel olish (optimizatsiya)
+        const [
+            locations,
+            rolePermissions,
+            additionalPerms,
+            restrictedPerms,
+            sessionsCount
+        ] = await Promise.all([
+            userRepository.getLocationsByUserId(user.id),
+            userRepository.getPermissionsByRole(user.role),
+            db('user_permissions').where({ user_id: user.id, type: 'additional' }).pluck('permission_key'),
+            db('user_permissions').where({ user_id: user.id, type: 'restricted' }).pluck('permission_key'),
+            // Device limit tekshiruvini optimallashtirish - faqat super admin emas bo'lsa
+            user.role !== 'super_admin' 
+                ? db('sessions').where('sess', 'like', `%"id":${user.id}%`).count('* as count').first()
+                : Promise.resolve({ count: 0 })
+        ]);
 
         // Super admin uchun device limit tekshiruvi o'tkazib yuboriladi
         if (user.role !== 'super_admin') {
-            const sessions = await db('sessions').where('sess', 'like', `%"id":${user.id}%`);
+            const activeSessionsCount = sessionsCount ? parseInt(sessionsCount.count) : 0;
             
-            if (sessions.length >= user.device_limit) {
+            if (activeSessionsCount >= user.device_limit) {
                 if (!user.telegram_chat_id) {
-                    await logAction(user.id, 'login_fail', 'user', user.id, { username, reason: 'Device limit reached, no Telegram', ip: ipAddress, userAgent });
+                    // Background'da log yozish (await qilmaslik)
+                    logAction(user.id, 'login_fail', 'user', user.id, { username, reason: 'Device limit reached, no Telegram', ip: ipAddress, userAgent }).catch(err => console.error('Log yozishda xatolik:', err));
                     return res.status(403).json({ 
                         message: `Qurilmalar limiti (${user.device_limit}) to'lgan. Yangi qurilmadan kirish uchun Telegram botga ulanmagansiz. Iltimos, adminga murojaat qiling.` 
                     });
                 }
                 
-                await sendToTelegram({
+                // Telegram xabarni background'da yuborish
+                sendToTelegram({
                     type: 'secret_word_request',
                     chat_id: user.telegram_chat_id,
                     user_id: user.id,
                     username: user.username,
                     ip: ipAddress,
                     device: userAgent
-                });
-                await logAction(user.id, '2fa_sent', 'user', user.id, { username, reason: 'Device limit reached', ip: ipAddress, userAgent });
+                }).catch(err => console.error('Telegram xabar yuborishda xatolik:', err));
+                
+                // Background'da log yozish
+                logAction(user.id, '2fa_sent', 'user', user.id, { username, reason: 'Device limit reached', ip: ipAddress, userAgent }).catch(err => console.error('Log yozishda xatolik:', err));
 
                 return res.status(429).json({
                     secretWordRequired: true,
@@ -229,20 +261,6 @@ router.post('/login', async (req, res) => {
                 });
             }
         }
-
-        const [locations, rolePermissions] = await Promise.all([
-            userRepository.getLocationsByUserId(user.id),
-            userRepository.getPermissionsByRole(user.role)
-        ]);
-        
-        // User-specific permissions (additional va restricted)
-        const additionalPerms = await db('user_permissions')
-            .where({ user_id: user.id, type: 'additional' })
-            .pluck('permission_key');
-        
-        const restrictedPerms = await db('user_permissions')
-            .where({ user_id: user.id, type: 'restricted' })
-            .pluck('permission_key');
 
         // Final permissions: rolePermissions + additional - restricted
         let finalPermissions = [...rolePermissions];
@@ -256,7 +274,7 @@ router.post('/login', async (req, res) => {
         
         // Cheklangan huquqlarni olib tashlash
         finalPermissions = finalPermissions.filter(perm => !restrictedPerms.includes(perm));
-        
+
         req.session.user = {
             id: user.id,
             username: user.username,
@@ -269,7 +287,21 @@ router.post('/login', async (req, res) => {
         req.session.user_agent = userAgent;
         req.session.last_activity = Date.now();
 
-        await logAction(user.id, 'login_success', 'user', user.id, { ip: ipAddress, userAgent });
+        // Login attempts'ni reset qilish (agar kerak bo'lsa)
+        if (user.login_attempts > 0 || user.lock_reason) {
+            // Background'da reset qilish
+            userRepository.resetLoginAttempts(user.id).catch(err => console.error('Login attempts reset xatolik:', err));
+        }
+
+        // Telegram xabarni o'chirish (agar kerak bo'lsa) - background'da
+        if (user.must_delete_creds && user.telegram_chat_id) {
+            sendToTelegram({
+                type: 'delete_credentials',
+                chat_id: user.telegram_chat_id,
+                user_id: user.id
+            }).catch(err => console.error('Telegram xabar yuborishda xatolik:', err));
+            db('users').where({ id: user.id }).update({ must_delete_creds: false }).catch(err => console.error('Update xatolik:', err));
+        }
 
         // Super admin yoki admin uchun admin paneliga redirect
         // Yoki kerakli permissions'ga ega foydalanuvchilar uchun
@@ -280,10 +312,18 @@ router.post('/login', async (req, res) => {
             redirectUrl = '/admin';
         }
         
+        // Background'da log yozish (javobni kutmaslik)
+        logAction(user.id, 'login_success', 'user', user.id, { ip: ipAddress, userAgent }).catch(err => console.error('Log yozishda xatolik:', err));
+        
+        const elapsedTime = Date.now() - startTime;
+        console.log(`✅ [LOGIN] Login muvaffaqiyatli. User ID: ${user.id}, Vaqt: ${elapsedTime}ms, Redirect: ${redirectUrl}`);
+        
         res.json({ message: "Tizimga muvaffaqiyatli kirildi.", user: req.session.user, redirectUrl });
 
     } catch (error) {
-        console.error("/api/login xatoligi:", error);
+        const elapsedTime = Date.now() - startTime;
+        console.error(`❌ [LOGIN] Login xatoligi. Username: ${username}, Vaqt: ${elapsedTime}ms`, error);
+        console.error(`❌ [LOGIN] Error stack:`, error.stack);
         res.status(500).json({ message: "Serverda kutilmagan xatolik yuz berdi." });
     }
 });
