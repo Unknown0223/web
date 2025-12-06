@@ -870,18 +870,27 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 
                 console.log(`🔍 [BOT] ========== SHART TEKSHIRILMOQDA ==========`);
                 console.log(`🔍 [BOT] Filiallar shart tekshiruvi:`);
-                console.log(`   - requiresLocations: ${requiresLocations}`);
-                console.log(`   - isLocationsRequired: ${isLocationsRequired}`);
+                console.log(`   - requiresLocations: ${requiresLocations} (${typeof requiresLocations})`);
+                console.log(`   - isLocationsRequired: ${isLocationsRequired} (${typeof isLocationsRequired})`);
                 console.log(`   - isLocationsRequired === null: ${isLocationsRequired === null}`);
                 console.log(`   - (requiresLocations || isLocationsRequired === null): ${(requiresLocations || isLocationsRequired === null)}`);
                 console.log(`   - allLocations.length: ${allLocations.length}`);
+                console.log(`   - allLocations:`, JSON.stringify(allLocations, null, 2));
                 console.log(`   - allLocations.length > 0: ${allLocations.length > 0}`);
                 console.log(`   - Umumiy shart: ${(requiresLocations || isLocationsRequired === null) && allLocations.length > 0}`);
+                console.log(`   - Shartning birinchi qismi: (requiresLocations || isLocationsRequired === null) = ${(requiresLocations || isLocationsRequired === null)}`);
+                console.log(`   - Shartning ikkinchi qismi: allLocations.length > 0 = ${allLocations.length > 0}`);
+                console.log(`   - IKKALASI BIRGA: ${(requiresLocations || isLocationsRequired === null) && allLocations.length > 0}`);
                 
                 // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan) va filiallar mavjud bo'lsa
                 // Belgilanmagan (null) bo'lsa ham, agar filiallar mavjud bo'lsa, ularni ko'rsatish kerak
+                console.log(`🔍 [BOT] ========== FILIALLAR KO'RSATISH SHARTI TEKSHIRILMOQDA ==========`);
+                console.log(`🔍 [BOT] Shart: (requiresLocations || isLocationsRequired === null) && allLocations.length > 0`);
+                console.log(`🔍 [BOT] requiresLocations: ${requiresLocations}, isLocationsRequired: ${isLocationsRequired}, allLocations.length: ${allLocations.length}`);
+                
                 if ((requiresLocations || isLocationsRequired === null) && allLocations.length > 0) {
                     console.log(`✅ [BOT] SHART TO'G'RI - Filiallar ko'rsatiladi`);
+                    console.log(`✅ [BOT] Sabab: requiresLocations=${requiresLocations} YOKI isLocationsRequired=${isLocationsRequired} (null) VA allLocations.length=${allLocations.length} > 0`);
                     userStates[adminChatId].state = 'awaiting_locations';
                     
                     console.log(`📍 [BOT] ========== FILIALLAR KO'RSATILMOQDA ==========`);
@@ -956,9 +965,19 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 
                 // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan), lekin filiallar mavjud emas
                 // Belgilanmagan (null) bo'lsa, filiallar mavjud bo'lmasa ham, brendlarga o'tish kerak
+                console.log(`🔍 [BOT] ========== FILIALLAR MAVJUD EMAS HOLATI TEKSHIRILMOQDA ==========`);
+                console.log(`🔍 [BOT] Shart: (requiresLocations || isLocationsRequired === null) && allLocations.length === 0`);
+                console.log(`🔍 [BOT] requiresLocations: ${requiresLocations}, isLocationsRequired: ${isLocationsRequired}, allLocations.length: ${allLocations.length}`);
+                console.log(`🔍 [BOT] allLocations:`, JSON.stringify(allLocations, null, 2));
+                
                 if ((requiresLocations || isLocationsRequired === null) && allLocations.length === 0) {
+                    console.log(`✅ [BOT] Filiallar mavjud emas (length=${allLocations.length}), brendlarga o'tilmoqda`);
+                    console.log(`✅ [BOT] Sabab: requiresLocations=${requiresLocations} YOKI isLocationsRequired=${isLocationsRequired} (null) VA allLocations.length=${allLocations.length} === 0`);
+                    
                     // Agar brendlar ham kerak bo'lsa (belgilangan yoki belgilanmagan), avval brendlarni tanlash
+                    console.log(`🔍 [BOT] Brendlar shart tekshirilmoqda: requiresBrands=${requiresBrands}, isBrandsRequired=${isBrandsRequired}`);
                     if (requiresBrands || isBrandsRequired === null) {
+                        console.log(`✅ [BOT] Brendlar ham kerak, brendlarga o'tilmoqda`);
                         userStates[adminChatId].state = 'awaiting_brands';
                         
                         console.log(`🏷️ [BOT] Brendlarni database'dan olishga harakat qilinmoqda.`);
