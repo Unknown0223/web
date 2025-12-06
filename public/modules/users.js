@@ -457,21 +457,53 @@ async function loadLocationsForApproval() {
 
 async function loadBrandsForApproval() {
     try {
+        console.log('🏷️ [WEB] Brendlarni yuklashga harakat qilinmoqda...');
         const res = await safeFetch('/api/brands');
-        if (!res.ok) throw new Error('Brendlarni yuklashda xatolik');
+        console.log('🔍 [WEB] Brendlar API javob. Status:', res.status, 'OK:', res.ok);
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('❌ [WEB] Brendlar API xatolik. Status:', res.status, 'Response:', errorText);
+            throw new Error(`Brendlarni yuklashda xatolik: ${res.status}`);
+        }
+        
         const allBrands = await res.json();
+        console.log('✅ [WEB] Brendlar olingan. Soni:', Array.isArray(allBrands) ? allBrands.length : 'not array', 'Type:', typeof allBrands);
+        
+        if (!Array.isArray(allBrands)) {
+            console.error('❌ [WEB] Brendlar array emas! Type:', typeof allBrands, 'Value:', allBrands);
+            throw new Error('Brendlar array formatida emas');
+        }
+        
+        if (allBrands.length === 0) {
+            console.warn('⚠️ [WEB] Brendlar ro\'yxati bo\'sh');
+        } else {
+            console.log('🏷️ [WEB] Brendlar ro\'yxati:', allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
+        }
         
         const approvalBrandsList = document.getElementById('approval-brands-list');
         if (approvalBrandsList) {
-            approvalBrandsList.innerHTML = allBrands.map(brand => `
-                <label class="checkbox-item" style="display: block; margin-bottom: 8px;">
-                    <input type="checkbox" value="${brand.id}" name="approval-brand">
-                    <span>${brand.emoji || '🏷️'} ${brand.name}</span>
-                </label>
-            `).join('');
+            if (allBrands.length === 0) {
+                approvalBrandsList.innerHTML = '<p style="color: #ff6b6b; padding: 10px;">⚠️ Tizimda brendlar mavjud emas. Avval brendlar yarating.</p>';
+            } else {
+                approvalBrandsList.innerHTML = allBrands.map(brand => `
+                    <label class="checkbox-item" style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox" value="${brand.id}" name="approval-brand">
+                        <span>${brand.emoji || '🏷️'} ${brand.name}</span>
+                    </label>
+                `).join('');
+            }
+            console.log('✅ [WEB] Brendlar ro\'yxati render qilindi. Brendlar soni:', allBrands.length);
+        } else {
+            console.warn('⚠️ [WEB] approval-brands-list elementi topilmadi');
         }
     } catch (error) {
-        console.error('Brendlarni yuklashda xatolik:', error);
+        console.error('❌ [WEB] Brendlarni yuklashda xatolik:', error);
+        console.error('❌ [WEB] Error stack:', error.stack);
+        const approvalBrandsList = document.getElementById('approval-brands-list');
+        if (approvalBrandsList) {
+            approvalBrandsList.innerHTML = `<p style="color: #ff6b6b; padding: 10px;">⚠️ Xatolik: ${error.message}</p>`;
+        }
     }
 }
 
