@@ -564,10 +564,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
 
             if (code && code.startsWith('subscribe_')) {
                 console.log(`🔗 [BOT] Subscribe kod topildi: ${code}`);
-            const newUserIdStr = code.split('_')[1];
-            const newUserId = parseInt(newUserIdStr, 10);
-            
-            console.log(`🔗 [BOT] Subscribe so'rovi. Code: ${code}, User ID (string): ${newUserIdStr}, User ID (int): ${newUserId}, Chat ID: ${chatId}`);
+                const newUserIdStr = code.split('_')[1];
+                const newUserId = parseInt(newUserIdStr, 10);
+                
+                console.log(`🔗 [BOT] Subscribe so'rovi. Code: ${code}, User ID (string): ${newUserIdStr}, User ID (int): ${newUserId}, Chat ID: ${chatId}`);
             
             if (isNaN(newUserId) || newUserId <= 0) {
                 console.error(`❌ [BOT] Noto'g'ri User ID: ${newUserIdStr}`);
@@ -682,8 +682,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             }
             }
         } catch (error) {
+            console.error(`❌ [BOT] ========== /START HANDLER XATOLIK ==========`);
             console.error(`❌ [BOT] /start handler'da xatolik:`, error);
+            console.error(`❌ [BOT] Error message:`, error.message);
             console.error(`❌ [BOT] Error stack:`, error.stack);
+            console.error(`❌ [BOT] ==========================================`);
             try {
                 await safeSendMessage(msg.chat.id, `❌ Tizimda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`);
             } catch (sendError) {
