@@ -417,17 +417,26 @@ export async function toggleLocationVisibilityForApprovalForm() {
     
     // Agar rol sozlamalarida belgilanmagan bo'lsa, default holatda ikkalasi ham ko'rsatiladi
     // requires_locations va requires_brands undefined yoki null bo'lsa, ikkalasi ham true deb qabul qilinadi
-    const requiresLocations = roleData 
+    const isLocationsRequired = roleData 
         ? (roleData.requires_locations !== undefined && roleData.requires_locations !== null 
             ? roleData.requires_locations 
-            : true)  // Default: true (belgilanmagan bo'lsa)
-        : true;  // Rol topilmasa ham default: true
+            : null)  // null = belgilanmagan
+        : null;
     
-    const requiresBrands = roleData 
+    const isBrandsRequired = roleData 
         ? (roleData.requires_brands !== undefined && roleData.requires_brands !== null 
             ? roleData.requires_brands 
-            : true)  // Default: true (belgilanmagan bo'lsa)
-        : true;  // Rol topilmasa ham default: true
+            : null)  // null = belgilanmagan
+        : null;
+    
+    // Belgilanmagan bo'lsa, default holatda ko'rsatiladi (ixtiyoriy)
+    const requiresLocations = isLocationsRequired !== null ? isLocationsRequired : true;
+    const requiresBrands = isBrandsRequired !== null ? isBrandsRequired : true;
+    
+    // Belgilanmagan bo'lsa, "O'tkazib yuborish" tugmasi ko'rsatiladi
+    const showSkipLocations = isLocationsRequired === null;
+    const showSkipBrands = isBrandsRequired === null;
+    const showSkipAll = showSkipLocations || showSkipBrands;
     
     const locationsDisplay = requiresLocations ? 'block' : 'none';
     const brandsDisplay = requiresBrands ? 'block' : 'none';
@@ -435,6 +444,21 @@ export async function toggleLocationVisibilityForApprovalForm() {
     if (DOM.approvalLocationsGroup) DOM.approvalLocationsGroup.style.display = locationsDisplay;
     const approvalBrandsGroup = document.getElementById('approval-brands-group');
     if (approvalBrandsGroup) approvalBrandsGroup.style.display = brandsDisplay;
+    
+    // "O'tkazib yuborish" tugmalarini ko'rsatish/yashirish
+    const skipLocationsBtn = document.getElementById('skip-locations-btn');
+    const skipBrandsBtn = document.getElementById('skip-brands-btn');
+    const skipAllBtn = document.getElementById('skip-all-btn');
+    
+    if (skipLocationsBtn) {
+        skipLocationsBtn.style.display = showSkipLocations && locationsDisplay === 'block' ? 'block' : 'none';
+    }
+    if (skipBrandsBtn) {
+        skipBrandsBtn.style.display = showSkipBrands && brandsDisplay === 'block' ? 'block' : 'none';
+    }
+    if (skipAllBtn) {
+        skipAllBtn.style.display = showSkipAll ? 'block' : 'none';
+    }
     
     // Filiallar kerak bo'lsa, filiallarni yuklash
     if (locationsDisplay === 'block') {
@@ -445,6 +469,12 @@ export async function toggleLocationVisibilityForApprovalForm() {
     if (brandsDisplay === 'block') {
         await loadBrandsForApproval();
     }
+    
+    // State'ga saqlash (submitUserApproval uchun)
+    window.approvalSkipLocations = false;
+    window.approvalSkipBrands = false;
+    window.approvalIsLocationsRequired = isLocationsRequired;
+    window.approvalIsBrandsRequired = isBrandsRequired;
 }
 
 async function loadLocationsForApproval() {
@@ -807,7 +837,65 @@ export async function openApprovalModal(userId, username) {
     // Modal ochilganda filiallar va brendlarni yuklash
     await toggleLocationVisibilityForApprovalForm();
     
+    // Event listenerlarni qo'shish
+    setupApprovalSkipButtons();
+    
     DOM.approvalModal.classList.remove('hidden');
+}
+
+function setupApprovalSkipButtons() {
+    // Skip locations button
+    const skipLocationsBtn = document.getElementById('skip-locations-btn');
+    if (skipLocationsBtn) {
+        skipLocationsBtn.onclick = () => {
+            window.approvalSkipLocations = true;
+            // Barcha checkboxlarni o'chirish
+            document.querySelectorAll('#approval-locations-checkbox-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            skipLocationsBtn.style.opacity = '0.5';
+            skipLocationsBtn.innerHTML = '<i data-feather="check"></i> O\'tkazib yuborildi';
+            if (window.feather) window.feather.replace();
+        };
+    }
+    
+    // Skip brands button
+    const skipBrandsBtn = document.getElementById('skip-brands-btn');
+    if (skipBrandsBtn) {
+        skipBrandsBtn.onclick = () => {
+            window.approvalSkipBrands = true;
+            // Barcha checkboxlarni o'chirish
+            document.querySelectorAll('#approval-brands-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            skipBrandsBtn.style.opacity = '0.5';
+            skipBrandsBtn.innerHTML = '<i data-feather="check"></i> O\'tkazib yuborildi';
+            if (window.feather) window.feather.replace();
+        };
+    }
+    
+    // Skip all button
+    const skipAllBtn = document.getElementById('skip-all-btn');
+    if (skipAllBtn) {
+        skipAllBtn.onclick = async () => {
+            window.approvalSkipLocations = true;
+            window.approvalSkipBrands = true;
+            // Barcha checkboxlarni o'chirish
+            document.querySelectorAll('#approval-locations-checkbox-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            document.querySelectorAll('#approval-brands-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            
+            // Submit qilish
+            const form = document.getElementById('approval-form');
+            if (form) {
+                const event = new Event('submit', { bubbles: true, cancelable: true });
+                form.dispatchEvent(event);
+            }
+        };
+    }
 }
 
 export async function submitUserApproval(e) {
@@ -818,18 +906,18 @@ export async function submitUserApproval(e) {
     // Rol talablarini state'dan olish
     const roleData = state.roles.find(r => r.role_name === role);
     
-    // Agar rol sozlamalarida belgilanmagan bo'lsa, default holatda ikkalasi ham ko'rsatiladi
-    const requiresLocations = roleData 
+    // Belgilanmagan yoki belgilangan holatni aniqlash
+    const isLocationsRequired = roleData 
         ? (roleData.requires_locations !== undefined && roleData.requires_locations !== null 
             ? roleData.requires_locations 
-            : true)  // Default: true (belgilanmagan bo'lsa)
-        : true;  // Rol topilmasa ham default: true
+            : null)  // null = belgilanmagan
+        : null;
     
-    const requiresBrands = roleData 
+    const isBrandsRequired = roleData 
         ? (roleData.requires_brands !== undefined && roleData.requires_brands !== null 
             ? roleData.requires_brands 
-            : true)  // Default: true (belgilanmagan bo'lsa)
-        : true;  // Rol topilmasa ham default: true
+            : null)  // null = belgilanmagan
+        : null;
     
     const data = {
         role: role,
@@ -837,14 +925,28 @@ export async function submitUserApproval(e) {
         brands: []
     };
     
-    // Filiallar kerak bo'lsa, tanlangan filiallarni qo'shish
-    if (requiresLocations) {
+    // Agar belgilanmagan bo'lsa va skip bosilsa, bo'sh array yuborish
+    // Agar belgilangan bo'lsa, tanlangan ma'lumotlarni yuborish
+    if (isLocationsRequired === null) {
+        // Belgilanmagan - skip bosilsa bo'sh, aks holda tanlanganlar
+        if (!window.approvalSkipLocations) {
+            data.locations = Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
+                .map(cb => cb.value);
+        }
+    } else if (isLocationsRequired) {
+        // Belgilangan va majburiy
         data.locations = Array.from(document.querySelectorAll('#approval-locations-checkbox-list input:checked'))
             .map(cb => cb.value);
     }
     
-    // Brendlar kerak bo'lsa, tanlangan brendlarni qo'shish
-    if (requiresBrands) {
+    if (isBrandsRequired === null) {
+        // Belgilanmagan - skip bosilsa bo'sh, aks holda tanlanganlar
+        if (!window.approvalSkipBrands) {
+            data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
+                .map(cb => parseInt(cb.value));
+        }
+    } else if (isBrandsRequired) {
+        // Belgilangan va majburiy
         data.brands = Array.from(document.querySelectorAll('#approval-brands-list input:checked'))
             .map(cb => parseInt(cb.value));
     }
