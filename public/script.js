@@ -232,7 +232,12 @@ const renderKpiCards = (stats) => {
                 loadSessionStats();
             }
             
-            if (state.currentUser.permissions.includes('reports:create')) {
+            // Agar filiallar bo'lmasa, hisobot yaratishni to'xtatish
+            if (state.userLocations.length === 0) {
+                if(DOM.tableBody) DOM.tableBody.innerHTML = '<tr><td colspan="100%"><div class="empty-state">Sizga biriktirilgan filiallar mavjud emas. Iltimos, administrator bilan bog\'laning.</div></td></tr>';
+                if (DOM.confirmBtn) DOM.confirmBtn.classList.add('hidden');
+                if (DOM.editBtn) DOM.editBtn.classList.add('hidden');
+            } else if (state.currentUser.permissions.includes('reports:create')) {
                 createNewReport();
             } else {
                 if(DOM.tableBody) DOM.tableBody.innerHTML = '<tr><td colspan="100%"><div class="empty-state">Yangi hisobot yaratish uchun ruxsat yo\'q.</div></td></tr>';
@@ -603,6 +608,32 @@ const renderKpiCards = (stats) => {
         }
         
         state.userLocations = locationsToShow;
+        
+        // Agar filiallar bo'lmasa, hisobot bo'limini yashirish
+        if (locationsToShow.length === 0) {
+            const tableWrapper = document.querySelector('.table-wrapper');
+            const header = document.querySelector('.header');
+            const controls = document.querySelector('.controls');
+            const summaryWrapper = document.getElementById('summary-wrapper');
+            
+            if (tableWrapper) {
+                tableWrapper.innerHTML = '<div class="empty-state" style="padding: 60px 20px; text-align: center; color: rgba(255,255,255,0.6);"><i data-feather="alert-circle" style="width: 48px; height: 48px; margin-bottom: 20px;"></i><h3 style="margin-bottom: 10px;">Filiallar topilmadi</h3><p>Sizga biriktirilgan filiallar mavjud emas. Iltimos, administrator bilan bog\'laning.</p></div>';
+            }
+            
+            if (header) {
+                header.style.display = 'none';
+            }
+            
+            if (controls) {
+                controls.style.display = 'none';
+            }
+            
+            if (summaryWrapper) {
+                summaryWrapper.style.display = 'none';
+            }
+            
+            if (typeof feather !== 'undefined') feather.replace();
+        }
     }
 
     function populateLocations() {

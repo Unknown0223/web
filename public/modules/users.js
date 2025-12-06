@@ -774,7 +774,7 @@ export function copyTelegramLink() {
 }
 
 // Pending users uchun funksiyalar
-export function openApprovalModal(userId, username) {
+export async function openApprovalModal(userId, username) {
     DOM.approvalForm.reset();
     DOM.approvalUserIdInput.value = userId;
     DOM.approvalUsernameSpan.textContent = username;
@@ -791,9 +791,9 @@ export function openApprovalModal(userId, username) {
             const displayName = roleNames[r.role_name] || r.role_name.charAt(0).toUpperCase() + r.role_name.slice(1);
             return `<option value="${r.role_name}">${displayName}</option>`;
         }).join('');
-    toggleLocationVisibilityForApprovalForm();
-    // Rol tanlanganda filiallar va brendlar maydonlarini ko'rsatish
-    toggleLocationVisibilityForApprovalForm();
+    
+    // Modal ochilganda filiallar va brendlarni yuklash
+    await toggleLocationVisibilityForApprovalForm();
     
     DOM.approvalModal.classList.remove('hidden');
 }
