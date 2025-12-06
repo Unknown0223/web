@@ -1686,8 +1686,7 @@ function updateRequestsStatistics() {
     // Update filter badges
     updateElement('request-status-count-all', pendingUsers.length);
     updateElement('request-status-count-telegram', telegramPending);
-    updateElement('request-status-count-admin', adminPending);
-    updateElement('request-status-count-process', inProcess);
+    // Admin tasdiq va Jarayonda sanogichlari olib tashlandi
     
     // Update pending text
     const pendingText = pendingUsers.length === 0 ? 'Hammasi tasdiqlangan' : 
