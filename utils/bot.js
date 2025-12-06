@@ -852,8 +852,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 userStates[adminChatId].skipLocations = false;
                 userStates[adminChatId].skipBrands = false;
                 
-                // Agar filiallar kerak bo'lsa va filiallar mavjud bo'lsa
-                if (requiresLocations && allLocations.length > 0) {
+                // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan) va filiallar mavjud bo'lsa
+                // Belgilanmagan (null) bo'lsa ham, agar filiallar mavjud bo'lsa, ularni ko'rsatish kerak
+                if ((requiresLocations || isLocationsRequired === null) && allLocations.length > 0) {
                     userStates[adminChatId].state = 'awaiting_locations';
                     
                     console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`);
@@ -920,10 +921,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     return;
                 }
                 
-                // Agar filiallar kerak bo'lsa, lekin filiallar mavjud emas
-                if (requiresLocations && allLocations.length === 0) {
-                    // Agar brendlar ham kerak bo'lsa, avval brendlarni tanlash
-                    if (requiresBrands) {
+                // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan), lekin filiallar mavjud emas
+                // Belgilanmagan (null) bo'lsa, filiallar mavjud bo'lmasa ham, brendlarga o'tish kerak
+                if ((requiresLocations || isLocationsRequired === null) && allLocations.length === 0) {
+                    // Agar brendlar ham kerak bo'lsa (belgilangan yoki belgilanmagan), avval brendlarni tanlash
+                    if (requiresBrands || isBrandsRequired === null) {
                         userStates[adminChatId].state = 'awaiting_brands';
                         
                         console.log(`🏷️ [BOT] Brendlarni database'dan olishga harakat qilinmoqda.`);
@@ -1016,8 +1018,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     }
                 }
                 
-                // Agar faqat brendlar kerak bo'lsa
-                if (requiresBrands && !requiresLocations) {
+                // Agar faqat brendlar kerak bo'lsa (belgilangan yoki belgilanmagan)
+                // Belgilanmagan (null) bo'lsa ham, agar brendlar mavjud bo'lsa, ularni ko'rsatish kerak
+                if ((requiresBrands || isBrandsRequired === null) && !requiresLocations && isLocationsRequired !== null) {
                     userStates[adminChatId].state = 'awaiting_brands';
                     
                     console.log(`🏷️ [BOT] Faqat brendlar kerak. Database'dan olishga harakat qilinmoqda.`);
