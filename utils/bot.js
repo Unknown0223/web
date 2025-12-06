@@ -1032,8 +1032,6 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         });
                         await bot.answerCallbackQuery(query.id);
                         return;
-                    } else {
-                        console.log(`❌ [BOT] Filiallar mavjud emas, brendlar ham ko'rsatilmaydi`);
                     }
                 }
                 
