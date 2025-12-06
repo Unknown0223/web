@@ -314,21 +314,25 @@ global.broadcastWebSocket = (type, payload) => {
         const botToken = tokenSetting ? tokenSetting.value : null;
 
         // Serverni ishga tushirish
-        server.listen(PORT, '0.0.0.0', async () => {
+        server.listen(PORT, '0.0.0.0', () => {
             console.log(`✅ Server ${PORT} portida ishga tushdi`);
             console.log(`🌐 APP_BASE_URL: ${process.env.APP_BASE_URL}`);
             const wsProtocol = process.env.APP_BASE_URL?.startsWith('https://') ? 'wss' : 'ws';
             const wsHost = process.env.APP_BASE_URL?.replace(/^https?:\/\//, '') || `localhost:${PORT}`;
             console.log(`🔌 WebSocket server ${wsProtocol}://${wsHost}/ws da ishga tushdi`);
             console.log(`🔌 [WEBSOCKET] WebSocket server tayyor. Path: /ws, Protocol: ${wsProtocol}`);
+            console.log(`✅ [HEALTH] Health endpoint tayyor: /health`);
 
             // PM2 uchun ready signal
             if (process.send) {
                 process.send('ready');
             }
 
-            // Bot token mavjud bo'lsa, webhookni o'rnatish
+            // Bot token mavjud bo'lsa, webhookni o'rnatish (async, lekin server bloklanmaydi)
+            // Bot initialization'ni alohida async funksiya sifatida ishga tushirish
+            // Shunda server darhol javob bera oladi va healthcheck muvaffaqiyatli bo'ladi
             if (botToken) {
+                (async () => {
                 // Deploy uchun webhook rejimida ishga tushirish
                 const appBaseUrl = process.env.APP_BASE_URL;
                 
@@ -434,6 +438,7 @@ global.broadcastWebSocket = (type, payload) => {
                         console.error("   3. Domain HTTPS bilan boshlanadimi?");
                     }
                 }
+                })(); // Async IIFE - bot initialization server bloklamaydi
             } else {
                 console.warn("⚠️  [BOT] Ma'lumotlar bazasida bot tokeni topilmadi. Bot ishga tushirilmadi.");
                 console.warn("⚠️  [BOT] Iltimos, admin panel orqali tokenni kiriting.");
