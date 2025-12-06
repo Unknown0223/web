@@ -596,6 +596,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
 
                 console.log(`🔍 [BOT] Bazadan foydalanuvchini qidiryapman. User ID: ${newUserId} (type: ${typeof newUserId})`);
                 const user = await db('users').where({ id: newUserId }).first();
+                console.log(`🔍 [BOT] Database query natijasi:`, user ? `Topildi (ID: ${user.id})` : 'Topilmadi');
                 
                 if (!user) {
                     console.error(`❌ [BOT] Foydalanuvchi topilmadi! User ID: ${newUserId}`);
@@ -609,15 +610,18 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 console.log(`✅ [BOT] Foydalanuvchi topildi: ID=${user.id}, Username=${user.username}, Status=${user.status}`);
 
                 if (user.status !== 'pending_telegram_subscription') {
+                    console.log(`⚠️ [BOT] Foydalanuvchi statusi noto'g'ri. Kutilgan: pending_telegram_subscription, Hozirgi: ${user.status}`);
                     await safeSendMessage(chatId, `✅ Siz allaqachon obuna bo'lgansiz yoki so'rovingiz ko'rib chiqilmoqda.`);
                     return;
                 }
 
+                console.log(`📝 [BOT] Foydalanuvchi ma'lumotlarini yangilamoqda...`);
                 await db('users').where({ id: newUserId }).update({
                     telegram_chat_id: chatId,
                     telegram_username: msg.from.username,
                     status: 'pending_approval'
                 });
+                console.log(`✅ [BOT] Foydalanuvchi ma'lumotlari yangilandi.`);
 
                 console.log(`✅ [BOT] Foydalanuvchi botga ulandi. User ID: ${newUserId}, Status: pending_approval`);
                 
