@@ -808,7 +808,19 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 userStates[adminChatId].brands = [];
 
                 const settings = await db('settings').where({ key: 'app_settings' }).first();
+                console.log(`🔍 [BOT] Settings olingan:`, settings ? 'mavjud' : 'yo\'q');
+                if (settings) {
+                    console.log(`🔍 [BOT] Settings value:`, settings.value);
+                    try {
+                        const parsedSettings = JSON.parse(settings.value);
+                        console.log(`🔍 [BOT] Parsed settings:`, parsedSettings);
+                        console.log(`🔍 [BOT] Locations:`, parsedSettings.locations);
+                    } catch (e) {
+                        console.error(`❌ [BOT] Settings parse xatolik:`, e);
+                    }
+                }
                 const allLocations = settings ? JSON.parse(settings.value).locations : [];
+                console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`, allLocations);
                 
                 // Rol talablariga ko'ra ketma-ketlikni aniqlash
                 // Belgilanmagan bo'lsa (null/undefined), default holatda ikkalasi ham ko'rsatiladi
@@ -916,21 +928,27 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         
                         console.log(`🏷️ [BOT] Brendlarni database'dan olishga harakat qilinmoqda.`);
                         
-                        try {
-                            // To'g'ridan-to'g'ri database'dan olish
-                            const allBrands = await db('brands')
-                                .select('id', 'name', 'emoji')
-                                .orderBy('name');
-                            
-                            console.log(`✅ [BOT] Brendlar database'dan olingan. Soni: ${Array.isArray(allBrands) ? allBrands.length : 'not array'}`);
-                            
-                            if (!Array.isArray(allBrands)) {
-                                console.error(`❌ [BOT] Brendlar array emas! Type: ${typeof allBrands}, Value:`, allBrands);
-                                throw new Error('Brendlar array formatida emas');
-                            }
-                            
-                            if (allBrands.length === 0) {
-                                console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
+                    try {
+                        // To'g'ridan-to'g'ri database'dan olish
+                        console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda (faqat brendlar)...`);
+                        const allBrands = await db('brands')
+                            .select('id', 'name', 'emoji')
+                            .orderBy('name');
+                        
+                        console.log(`✅ [BOT] Brendlar database'dan olingan. Soni: ${Array.isArray(allBrands) ? allBrands.length : 'not array'}`);
+                        
+                        if (!Array.isArray(allBrands)) {
+                            console.error(`❌ [BOT] Brendlar array emas! Type: ${typeof allBrands}, Value:`, allBrands);
+                            throw new Error('Brendlar array formatida emas');
+                        }
+                        
+                        if (allBrands.length === 0) {
+                            console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
+                        } else {
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                        }
+                        
+                        if (allBrands.length === 0) {
                                 await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Tizimda brendlar mavjud emas. Avval brendlar yarating.`, {
                                     chat_id: adminChatId,
                                     message_id: message.message_id,
@@ -1006,6 +1024,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     
                     try {
                         // To'g'ridan-to'g'ri database'dan olish
+                        console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda...`);
                         const allBrands = await db('brands')
                             .select('id', 'name', 'emoji')
                             .orderBy('name');
@@ -1019,6 +1038,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         
                         if (allBrands.length === 0) {
                             console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
+                        } else {
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                        }
+                        
+                        if (allBrands.length === 0) {
                             await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Tizimda brendlar mavjud emas. Avval brendlar yarating.`, {
                                 chat_id: adminChatId,
                                 message_id: message.message_id,
@@ -1187,6 +1211,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         
                         try {
                             // Barcha brendlarni to'g'ridan-to'g'ri database'dan olish
+                            console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda (filiallar skip qilindi)...`);
                             const allBrands = await db('brands')
                                 .select('id', 'name', 'emoji')
                                 .orderBy('name');
@@ -1200,6 +1225,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             if (allBrands.length === 0) {
                                 console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
+                            } else {
+                                console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                            }
+                            
+                            if (allBrands.length === 0) {
                                 await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Tizimda brendlar mavjud emas. Avval brendlar yarating.`, {
                                     chat_id: adminChatId,
                                     message_id: message.message_id,
@@ -1312,6 +1342,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         
                         try {
                             // Barcha brendlarni to'g'ridan-to'g'ri database'dan olish
+                            console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda (filiallar tanlandi)...`);
                             const allBrands = await db('brands')
                                 .select('id', 'name', 'emoji')
                                 .orderBy('name');
@@ -1325,6 +1356,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             if (allBrands.length === 0) {
                                 console.warn(`⚠️ [BOT] Brendlar ro'yxati bo'sh`);
+                            } else {
+                                console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                            }
+                            
+                            if (allBrands.length === 0) {
                                 await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> Tizimda brendlar mavjud emas. Avval brendlar yarating.`, {
                                     chat_id: adminChatId,
                                     message_id: message.message_id,
@@ -1734,11 +1770,15 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     console.log(`🏷️ [BOT] Brendlar ro'yxatini yangilash. Tanlangan brendlar: ${selectedBrands.length}`);
                     
                     try {
+                        console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda (ro'yxat yangilash)...`);
                         const allBrands = await db('brands')
                             .select('id', 'name', 'emoji')
                             .orderBy('name');
                         
                         console.log(`✅ [BOT] Brendlar database'dan olingan. Soni: ${allBrands.length}`);
+                        if (allBrands.length > 0) {
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                        }
                         
                         const brandButtons = allBrands.map(brand => ([{ 
                             text: `${selectedBrands.includes(brand.id) ? '✔️ ' : ''}${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 

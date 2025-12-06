@@ -506,21 +506,40 @@ export async function toggleLocationVisibilityForApprovalForm() {
 
 async function loadLocationsForApproval() {
     try {
+        console.log('📍 [WEB] Filiallarni yuklashga harakat qilinmoqda...');
         const settingsRes = await safeFetch('/api/settings');
-        if (!settingsRes.ok) throw new Error('Sozlamalarni yuklashda xatolik');
+        if (!settingsRes.ok) {
+            console.error('❌ [WEB] Settings API xatolik. Status:', settingsRes.status);
+            throw new Error('Sozlamalarni yuklashda xatolik');
+        }
         const settings = await settingsRes.json();
+        console.log('✅ [WEB] Settings olingan:', settings);
+        console.log('🔍 [WEB] app_settings:', settings.app_settings);
         const locations = settings.app_settings?.locations || [];
+        console.log('📍 [WEB] Filiallar ro\'yxati. Umumiy soni:', locations.length, locations);
         
         if (DOM.approvalLocationsCheckboxList) {
-            DOM.approvalLocationsCheckboxList.innerHTML = locations.map(loc => `
-                <label class="checkbox-item">
-                    <input type="checkbox" value="${loc}" name="approval-location">
-                    <span>${loc}</span>
-                </label>
-            `).join('');
+            if (locations.length === 0) {
+                DOM.approvalLocationsCheckboxList.innerHTML = '<p style="color: #ff6b6b; padding: 10px;">⚠️ Tizimda filiallar mavjud emas. Avval filiallar yarating.</p>';
+                console.warn('⚠️ [WEB] Filiallar ro\'yxati bo\'sh');
+            } else {
+                DOM.approvalLocationsCheckboxList.innerHTML = locations.map(loc => `
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="${loc}" name="approval-location">
+                        <span>${loc}</span>
+                    </label>
+                `).join('');
+                console.log('✅ [WEB] Filiallar ro\'yxati render qilindi. Filiallar soni:', locations.length);
+            }
+        } else {
+            console.warn('⚠️ [WEB] approval-locations-checkbox-list elementi topilmadi');
         }
     } catch (error) {
-        console.error('Filiallarni yuklashda xatolik:', error);
+        console.error('❌ [WEB] Filiallarni yuklashda xatolik:', error);
+        console.error('❌ [WEB] Error stack:', error.stack);
+        if (DOM.approvalLocationsCheckboxList) {
+            DOM.approvalLocationsCheckboxList.innerHTML = `<p style="color: #ff6b6b; padding: 10px;">⚠️ Xatolik: ${error.message}</p>`;
+        }
     }
 }
 
