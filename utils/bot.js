@@ -852,9 +852,20 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 userStates[adminChatId].skipLocations = false;
                 userStates[adminChatId].skipBrands = false;
                 
+                console.log(`🔍 [BOT] ========== SHART TEKSHIRILMOQDA ==========`);
+                console.log(`🔍 [BOT] Filiallar shart tekshiruvi:`);
+                console.log(`   - requiresLocations: ${requiresLocations}`);
+                console.log(`   - isLocationsRequired: ${isLocationsRequired}`);
+                console.log(`   - isLocationsRequired === null: ${isLocationsRequired === null}`);
+                console.log(`   - (requiresLocations || isLocationsRequired === null): ${(requiresLocations || isLocationsRequired === null)}`);
+                console.log(`   - allLocations.length: ${allLocations.length}`);
+                console.log(`   - allLocations.length > 0: ${allLocations.length > 0}`);
+                console.log(`   - Umumiy shart: ${(requiresLocations || isLocationsRequired === null) && allLocations.length > 0}`);
+                
                 // Agar filiallar kerak bo'lsa (belgilangan yoki belgilanmagan) va filiallar mavjud bo'lsa
                 // Belgilanmagan (null) bo'lsa ham, agar filiallar mavjud bo'lsa, ularni ko'rsatish kerak
                 if ((requiresLocations || isLocationsRequired === null) && allLocations.length > 0) {
+                    console.log(`✅ [BOT] SHART TO'G'RI - Filiallar ko'rsatiladi`);
                     userStates[adminChatId].state = 'awaiting_locations';
                     
                     console.log(`📍 [BOT] ========== FILIALLAR KO'RSATILMOQDA ==========`);
@@ -1021,13 +1032,28 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         });
                         await bot.answerCallbackQuery(query.id);
                         return;
+                    } else {
+                        console.log(`❌ [BOT] Filiallar mavjud emas, brendlar ham ko'rsatilmaydi`);
                     }
                 }
                 
                 // Agar faqat brendlar kerak bo'lsa (belgilangan yoki belgilanmagan)
                 // Belgilanmagan (null) bo'lsa ham, agar brendlar mavjud bo'lsa, ularni ko'rsatish kerak
+                console.log(`🔍 [BOT] Faqat brendlar shart tekshiruvi:`);
+                console.log(`   - requiresBrands: ${requiresBrands}`);
+                console.log(`   - isBrandsRequired: ${isBrandsRequired}`);
+                console.log(`   - isBrandsRequired === null: ${isBrandsRequired === null}`);
+                console.log(`   - (requiresBrands || isBrandsRequired === null): ${(requiresBrands || isBrandsRequired === null)}`);
+                console.log(`   - !requiresLocations: ${!requiresLocations}`);
+                console.log(`   - isLocationsRequired !== null: ${isLocationsRequired !== null}`);
+                console.log(`   - Umumiy shart: ${(requiresBrands || isBrandsRequired === null) && !requiresLocations && isLocationsRequired !== null}`);
+                
                 if ((requiresBrands || isBrandsRequired === null) && !requiresLocations && isLocationsRequired !== null) {
+                    console.log(`✅ [BOT] SHART TO'G'RI - Faqat brendlar ko'rsatiladi`);
                     userStates[adminChatId].state = 'awaiting_brands';
+                    
+                    // Brendlarni olish
+                    console.log(`🔍 [BOT] Brendlarni database'dan olishga harakat qilinmoqda (faqat brendlar)...`);
                     
                     console.log(`🏷️ [BOT] Faqat brendlar kerak. Database'dan olishga harakat qilinmoqda.`);
                     
@@ -1115,6 +1141,13 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 }
                 
                 // Agar hech narsa kerak bo'lmasa, to'g'ridan-to'g'ri tasdiqlash
+                console.log(`⚠️ [BOT] ========== HECH NARSA KERAK EMAS - TO'GRIDAN-TO'G'RI TASDIQLASH ==========`);
+                console.log(`⚠️ [BOT] Bu holat quyidagicha bo'lishi mumkin:`);
+                console.log(`   - Filiallar kerak emas (requiresLocations=false) va Brendlar kerak emas (requiresBrands=false)`);
+                console.log(`   - Yoki filiallar va brendlar mavjud emas`);
+                console.log(`⚠️ [BOT] Foydalanuvchi to'g'ridan-to'g'ri tasdiqlanmoqda. Locations: [], Brands: []`);
+                console.log(`⚠️ [BOT] ==========================================`);
+                
                 delete userStates[adminChatId];
 
                 try {
@@ -1126,6 +1159,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message);
 
+                    console.log(`✅ [BOT] Foydalanuvchi to'g'ridan-to'g'ri tasdiqlandi (hech narsa kerak emas)`);
                     await bot.editMessageText(originalText + `\n\n✅ <b>Foydalanuvchi tasdiqlandi va unga kirish ma'lumotlari yuborildi.</b>`, {
                         chat_id: adminChatId,
                         message_id: message.message_id,
@@ -1133,6 +1167,7 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         reply_markup: {}
                     });
                 } catch (error) {
+                    console.error(`❌ [BOT] To'g'ridan-to'g'ri tasdiqlashda xatolik:`, error);
                     await db('users').where({ id: userId }).update({ status: 'pending_approval' });
                     await bot.editMessageText(originalText + `\n\n⚠️ <b>Xatolik:</b> ${escapeHtml(error.message)}`, {
                         chat_id: adminChatId,
