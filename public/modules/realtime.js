@@ -23,14 +23,27 @@ export function initRealTime() {
 
 function connectWebSocket() {
     // WebSocket server manzili
+    // Railway va boshqa cloud platformalar uchun WebSocket protokoli
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+    let wsUrl;
+    
+    // Railway yoki boshqa cloud platformalar uchun
+    if (window.location.hostname.includes('railway.app') || 
+        window.location.hostname.includes('railway') ||
+        window.location.protocol === 'https:') {
+        // HTTPS bo'lsa, WSS ishlatish
+        wsUrl = `wss://${window.location.host}/ws`;
+    } else {
+        // Development uchun
+        wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+    }
     
     try {
+        console.log(`🔌 [WEBSOCKET] Ulanishga harakat qilinmoqda: ${wsUrl}`);
         ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
-            // console.log('✅ WebSocket connected');
+            console.log('✅ [WEBSOCKET] Ulanish muvaffaqiyatli');
             if (reconnectInterval) {
                 showToast('Real-time rejim yoqildi');
             }
@@ -42,16 +55,17 @@ function connectWebSocket() {
                 const data = JSON.parse(event.data);
                 handleWebSocketMessage(data);
             } catch (error) {
-                // console.error('WebSocket message error:', error);
+                console.error('❌ [WEBSOCKET] Xabar qayta ishlashda xatolik:', error);
             }
         };
         
         ws.onerror = (error) => {
-            // console.error('WebSocket error:', error);
+            console.error('❌ [WEBSOCKET] Xatolik:', error);
+            console.error('❌ [WEBSOCKET] URL:', wsUrl);
         };
         
-        ws.onclose = () => {
-            // console.log('❌ WebSocket disconnected');
+        ws.onclose = (event) => {
+            console.log('❌ [WEBSOCKET] Ulanish yopildi. Code:', event.code, 'Reason:', event.reason);
             scheduleReconnect();
         };
     } catch (error) {
