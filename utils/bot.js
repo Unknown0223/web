@@ -811,8 +811,26 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 const allLocations = settings ? JSON.parse(settings.value).locations : [];
                 
                 // Rol talablariga ko'ra ketma-ketlikni aniqlash
-                const requiresLocations = roleData.requires_locations || false;
-                const requiresBrands = roleData.requires_brands || false;
+                // Belgilanmagan bo'lsa (null/undefined), default holatda ikkalasi ham ko'rsatiladi
+                const isLocationsRequired = roleData.requires_locations !== undefined && roleData.requires_locations !== null 
+                    ? roleData.requires_locations 
+                    : null;  // null = belgilanmagan
+                const isBrandsRequired = roleData.requires_brands !== undefined && roleData.requires_brands !== null 
+                    ? roleData.requires_brands 
+                    : null;  // null = belgilanmagan
+                
+                const requiresLocations = isLocationsRequired !== null ? isLocationsRequired : true;  // Default: true
+                const requiresBrands = isBrandsRequired !== null ? isBrandsRequired : true;  // Default: true
+                
+                // Belgilanmagan bo'lsa, skip imkoniyati bor
+                const canSkipLocations = isLocationsRequired === null;
+                const canSkipBrands = isBrandsRequired === null;
+                
+                // State'ga saqlash
+                userStates[adminChatId].canSkipLocations = canSkipLocations;
+                userStates[adminChatId].canSkipBrands = canSkipBrands;
+                userStates[adminChatId].skipLocations = false;
+                userStates[adminChatId].skipBrands = false;
                 
                 // Agar filiallar kerak bo'lsa va filiallar mavjud bo'lsa
                 if (requiresLocations && allLocations.length > 0) {
@@ -854,16 +872,22 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         }
                     }
                     
+                    // "O'tkazib yuborish" tugmasi qo'shish (belgilanmagan bo'lsa)
+                    const finishButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }];
+                    if (canSkipLocations) {
+                        finishButtons.push({ text: "⏭️ O'tkazib yuborish", callback_data: 'skip_locations' });
+                    }
+                    
                     const keyboard = {
                         inline_keyboard: [
                             ...locationButtons,
-                            [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }]
+                            finishButtons
                         ]
                     };
                     
                     console.log(`✅ [BOT] Filiallar keyboard yaratildi. Qatorlar soni: ${locationButtons.length}`);
                     
-                    const newText = originalText + `\n\n<b>Rol tanlandi:</b> <code>${role}</code>\nEndi filial(lar)ni tanlang:`;
+                    const newText = originalText + `\n\n<b>Rol tanlandi:</b> <code>${role}</code>\nEndi filial(lar)ni tanlang${canSkipLocations ? ' (ixtiyoriy)' : ''}:`;
                     await bot.editMessageText(newText, {
                         chat_id: adminChatId,
                         message_id: message.message_id,
@@ -914,16 +938,21 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                                 callback_data: `brand_${brand.id}` 
                             }]));
                             
-                            const keyboard = {
-                                inline_keyboard: [
-                                    ...brandButtons,
-                                    [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }]
-                                ]
-                            };
-                            
-                            console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
-                            
-                            const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nFiliallar mavjud emas.\n\nEndi brend(lar)ni tanlang:`;
+                        const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
+                        if (canSkipBrands) {
+                            finishBrandButtons.push({ text: "⏭️ O'tkazib yuborish", callback_data: 'skip_brands' });
+                        }
+                        
+                        const keyboard = {
+                            inline_keyboard: [
+                                ...brandButtons,
+                                finishBrandButtons
+                            ]
+                        };
+                        
+                        console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
+                        
+                        const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nFiliallar mavjud emas.\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
                                 chat_id: adminChatId,
                                 message_id: message.message_id,
@@ -995,16 +1024,21 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             callback_data: `brand_${brand.id}` 
                         }]));
                         
+                        const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
+                        if (canSkipBrands) {
+                            finishBrandButtons.push({ text: "⏭️ O'tkazib yuborish", callback_data: 'skip_brands' });
+                        }
+                        
                         const keyboard = {
                             inline_keyboard: [
                                 ...brandButtons,
-                                [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }]
+                                finishBrandButtons
                             ]
                         };
                         
                         console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
                         
-                        const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nEndi brend(lar)ni tanlang:`;
+                        const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                         await bot.editMessageText(newText, {
                             chat_id: adminChatId,
                             message_id: message.message_id,
@@ -1063,7 +1097,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     
                     // Rol talablarini bazadan olish
                     const roleData = await db('roles').where({ role_name: role }).first();
-                    const requiresBrands = roleData ? (roleData.requires_brands || false) : false;
+                    const isBrandsRequired = roleData ? (roleData.requires_brands !== undefined && roleData.requires_brands !== null ? roleData.requires_brands : null) : null;
+                    const requiresBrands = isBrandsRequired !== null ? isBrandsRequired : true;
+                    const canSkipBrands = userStates[adminChatId].canSkipBrands || false;
                     
                     // Agar brendlar ham kerak bo'lsa
                     if (requiresBrands) {
@@ -1235,10 +1271,16 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         }
                     }
                     
+                    const finishButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }];
+                    const canSkipLocations = userStates[adminChatId].canSkipLocations || false;
+                    if (canSkipLocations) {
+                        finishButtons.push({ text: "⏭️ O'tkazib yuborish", callback_data: 'skip_locations' });
+                    }
+                    
                     const keyboard = {
                         inline_keyboard: [
                             ...locationButtons,
-                            [{ text: "✅ Yakunlash", callback_data: 'finish_locations' }]
+                            finishButtons
                         ]
                     };
                     
