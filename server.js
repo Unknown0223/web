@@ -120,8 +120,15 @@ app.post('/telegram-webhook/:token', async (req, res) => {
         }
         
         console.log(`🔄 [WEBHOOK] bot.processUpdate() chaqirilmoqda...`);
-        bot.processUpdate(req.body);
-        console.log(`✅ [WEBHOOK] bot.processUpdate() yakunlandi.`);
+        console.log(`🔄 [WEBHOOK] Update body:`, JSON.stringify(req.body, null, 2));
+        try {
+            bot.processUpdate(req.body);
+            console.log(`✅ [WEBHOOK] bot.processUpdate() yakunlandi.`);
+        } catch (error) {
+            console.error(`❌ [WEBHOOK] bot.processUpdate() xatolik:`, error);
+            console.error(`❌ [WEBHOOK] Error stack:`, error.stack);
+            return res.status(500).json({ error: 'Update processing failed' });
+        }
         
         res.status(200).json({ ok: true });
     } catch (error) {
