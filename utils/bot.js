@@ -857,7 +857,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 if ((requiresLocations || isLocationsRequired === null) && allLocations.length > 0) {
                     userStates[adminChatId].state = 'awaiting_locations';
                     
+                    console.log(`📍 [BOT] ========== FILIALLAR KO'RSATILMOQDA ==========`);
                     console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`);
+                    console.log(`📍 [BOT] Filiallar ro'yxati (batafsil):`, JSON.stringify(allLocations, null, 2));
+                    console.log(`📍 [BOT] Rol sozlamalari: requires_locations=${isLocationsRequired}, requiresLocations=${requiresLocations}, canSkipLocations=${canSkipLocations}`);
                     
                     // Filiallar ro'yxatini formatlash
                     let locationButtons = [];
@@ -909,6 +912,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     };
                     
                     console.log(`✅ [BOT] Filiallar keyboard yaratildi. Qatorlar soni: ${locationButtons.length}`);
+                    console.log(`✅ [BOT] Filiallar keyboard tugmalari:`, JSON.stringify(locationButtons.map(row => row.map(btn => btn.text)), null, 2));
+                    console.log(`✅ [BOT] Finish tugmalari:`, finishButtons.map(btn => btn.text));
+                    console.log(`📍 [BOT] ========== FILIALLAR KEYBOARD TAYYOR ==========`);
                     
                     const newText = originalText + `\n\n<b>Rol tanlandi:</b> <code>${role}</code>\nEndi filial(lar)ni tanlang${canSkipLocations ? ' (ixtiyoriy)' : ''}:`;
                     await bot.editMessageText(newText, {
@@ -1056,7 +1062,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             return;
                         }
                         
-                        console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
+                        console.log(`🏷️ [BOT] ========== BRENDLAR KO'RSATILMOQDA (Faqat brendlar) ==========`);
+                        console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                        console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
+                        console.log(`🏷️ [BOT] Rol sozlamalari: requires_brands=${isBrandsRequired}, requiresBrands=${requiresBrands}, canSkipBrands=${canSkipBrands}`);
                         
                         const brandButtons = allBrands.map(brand => ([{ 
                             text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
@@ -1078,6 +1087,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                         };
                         
                         console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
+                        console.log(`✅ [BOT] Brendlar keyboard tugmalari:`, JSON.stringify(brandButtons.map(row => row.map(btn => btn.text)), null, 2));
+                        console.log(`✅ [BOT] Finish tugmalari:`, finishBrandButtons.map(btn => btn.text));
+                        console.log(`🏷️ [BOT] ========== BRENDLAR KEYBOARD TAYYOR (Faqat brendlar) ==========`);
                         
                         const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                         await bot.editMessageText(newText, {
@@ -1245,6 +1257,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
                             
+                            console.log(`🏷️ [BOT] ========== BRENDLAR KO'RSATILMOQDA (Filiallar skip qilindi) ==========`);
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
+                            console.log(`🏷️ [BOT] Rol sozlamalari: requires_brands=${isBrandsRequired}, requiresBrands=${requiresBrands}, canSkipBrands=${canSkipBrands}`);
+                            
                             const brandButtons = allBrands.map(brand => ([{ 
                                 text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
                                 callback_data: `brand_${brand.id}` 
@@ -1265,6 +1282,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             };
                             
                             console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}, Skip imkoniyati: ${canSkipBrands}`);
+                            console.log(`✅ [BOT] Brendlar keyboard tugmalari:`, JSON.stringify(brandButtons.map(row => row.map(btn => btn.text)), null, 2));
+                            console.log(`✅ [BOT] Finish tugmalari:`, finishBrandButtons.map(btn => btn.text));
+                            console.log(`🏷️ [BOT] ========== BRENDLAR KEYBOARD TAYYOR (Filiallar skip qilindi) ==========`);
                             
                             const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> O'tkazib yuborildi\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
@@ -1376,13 +1396,18 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             
                             console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name}`).join(', '));
                             
+                            console.log(`🏷️ [BOT] ========== BRENDLAR KO'RSATILMOQDA (Filiallar tanlandi) ==========`);
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati:`, allBrands.map(b => `${b.id}: ${b.name || 'N/A'}`).join(', '));
+                            console.log(`🏷️ [BOT] Brendlar ro'yxati (batafsil):`, JSON.stringify(allBrands.map(b => ({ id: b.id, name: b.name, emoji: b.emoji })), null, 2));
+                            const canSkipBrands = userStates[adminChatId].canSkipBrands || false;
+                            console.log(`🏷️ [BOT] Rol sozlamalari: canSkipBrands=${canSkipBrands}`);
+                            
                             const brandButtons = allBrands.map(brand => ([{ 
                                 text: `${brand.emoji || '🏷️'} ${escapeHtml(brand.name)}`, 
                                 callback_data: `brand_${brand.id}` 
                             }]));
                             
                             const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
-                            const canSkipBrands = userStates[adminChatId].canSkipBrands || false;
                             if (canSkipBrands) {
                                 finishBrandButtons.push({ text: "⏭️ O'tkazib yuborish", callback_data: 'skip_brands' });
                             }
@@ -1397,6 +1422,9 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                             };
                             
                             console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
+                            console.log(`✅ [BOT] Brendlar keyboard tugmalari:`, JSON.stringify(brandButtons.map(row => row.map(btn => btn.text)), null, 2));
+                            console.log(`✅ [BOT] Finish tugmalari:`, finishBrandButtons.map(btn => btn.text));
+                            console.log(`🏷️ [BOT] ========== BRENDLAR KEYBOARD TAYYOR (Filiallar tanlandi) ==========`);
                             
                             const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> ${locations.length > 0 ? locations.map(l => `<code>${escapeHtml(l)}</code>`).join(', ') : 'yo\'q'}\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
@@ -1564,6 +1592,10 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                     const settings = await db('settings').where({ key: 'app_settings' }).first();
                     const allLocations = settings ? JSON.parse(settings.value).locations : [];
                     
+                    console.log(`📍 [BOT] ========== ORQAGA QAYTARISH: FILIALLAR ==========`);
+                    console.log(`📍 [BOT] Filiallar ro'yxati. Umumiy soni: ${allLocations.length}`, allLocations);
+                    console.log(`📍 [BOT] Rol sozlamalari: requires_locations=${isLocationsRequired}, requiresLocations=${requiresLocations}, canSkipLocations=${canSkipLocations}`);
+                    
                     if (requiresLocations && allLocations.length > 0) {
                         // Filiallar ro'yxatini formatlash
                         let locationButtons = [];
@@ -1608,6 +1640,11 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                                 finishButtons
                             ]
                         };
+                        
+                        console.log(`✅ [BOT] Filiallar keyboard yaratildi (orqaga qaytarish). Qatorlar soni: ${locationButtons.length}`);
+                        console.log(`✅ [BOT] Filiallar keyboard tugmalari:`, JSON.stringify(locationButtons.map(row => row.map(btn => btn.text)), null, 2));
+                        console.log(`✅ [BOT] Finish tugmalari:`, finishButtons.map(btn => btn.text));
+                        console.log(`📍 [BOT] ========== FILIALLAR KEYBOARD TAYYOR (Orqaga qaytarish) ==========`);
                         
                         // Original textni qaytarish (brendlar qismini olib tashlash)
                         const originalMessageText = originalText.split('\n\n<b>Rol:</b>')[0] || originalText.split('\n\n<b>Filiallar:</b>')[0] || originalText.split('\n\nEndi brend')[0] || originalText;
