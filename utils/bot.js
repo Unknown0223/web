@@ -1140,16 +1140,22 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                                 callback_data: `brand_${brand.id}` 
                             }]));
                             
+                            const finishBrandButtons = [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }];
+                            const canSkipBrands = userStates[adminChatId].canSkipBrands || false;
+                            if (canSkipBrands) {
+                                finishBrandButtons.push({ text: "⏭️ O'tkazib yuborish", callback_data: 'skip_brands' });
+                            }
+                            
                             const keyboard = {
                                 inline_keyboard: [
                                     ...brandButtons,
-                                    [{ text: "✅ Yakunlash", callback_data: 'finish_brands' }]
+                                    finishBrandButtons
                                 ]
                             };
                             
                             console.log(`✅ [BOT] Brendlar keyboard yaratildi. Brendlar soni: ${brandButtons.length}`);
                             
-                            const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> ${locations.length > 0 ? locations.map(l => `<code>${escapeHtml(l)}</code>`).join(', ') : 'yo\'q'}\n\nEndi brend(lar)ni tanlang:`;
+                            const newText = originalText + `\n\n<b>Rol:</b> <code>${role}</code>\n<b>Filiallar:</b> ${locations.length > 0 ? locations.map(l => `<code>${escapeHtml(l)}</code>`).join(', ') : 'yo\'q'}\n\nEndi brend(lar)ni tanlang${canSkipBrands ? ' (ixtiyoriy)' : ''}:`;
                             await bot.editMessageText(newText, {
                                 chat_id: adminChatId,
                                 message_id: message.message_id,
