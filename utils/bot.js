@@ -558,10 +558,12 @@ const initializeBot = async (botToken, options = { polling: true }) => {
             const chatId = msg.chat.id;
             const code = match[1];
             
+            console.log(`🤖 [BOT] ========== /START HANDLER BOSHLANDI ==========`);
             console.log(`🤖 [BOT] /start komandasi qabul qilindi. Chat ID: ${chatId}, Code: ${code || 'yo\'q'}`);
             console.log(`🤖 [BOT] /start handler ishga tushdi. Message:`, JSON.stringify(msg, null, 2));
 
             if (code && code.startsWith('subscribe_')) {
+                console.log(`🔗 [BOT] Subscribe kod topildi: ${code}`);
             const newUserIdStr = code.split('_')[1];
             const newUserId = parseInt(newUserIdStr, 10);
             
@@ -618,14 +620,21 @@ const initializeBot = async (botToken, options = { polling: true }) => {
                 });
 
                 console.log(`✅ [BOT] Foydalanuvchi botga ulandi. User ID: ${newUserId}, Status: pending_approval`);
+                
+                console.log(`📤 [BOT] Foydalanuvchiga javob yuborilmoqda...`);
                 await safeSendMessage(chatId, `✅ Rahmat! Siz botga muvaffaqiyatli obuna bo'ldingiz. \n\nSo'rovingiz ko'rib chiqish uchun adminga yuborildi. Tasdiqlanishini kuting.`);
+                console.log(`✅ [BOT] Foydalanuvchiga javob yuborildi.`);
 
+                console.log(`📤 [BOT] Admin'ga tasdiqlash so'rovi yuborilmoqda...`);
+                console.log(`📤 [BOT] sendToTelegram chaqirilmoqda. Type: new_user_approval, User ID: ${user.id}, Username: ${user.username}, Fullname: ${user.fullname}`);
                 await sendToTelegram({
                     type: 'new_user_approval',
                     user_id: user.id,
                     username: user.username,
                     fullname: user.fullname
                 });
+                console.log(`✅ [BOT] Admin'ga tasdiqlash so'rovi yuborildi.`);
+                console.log(`🤖 [BOT] ========== /START HANDLER YAKUNLANDI ==========`);
 
             } catch (error) {
                 console.error("Yangi foydalanuvchi obunasida xatolik:", error);
